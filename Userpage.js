@@ -6,7 +6,8 @@ import {
   Button,
   Alert,
   StyleSheet,
-  FlatList
+  FlatList,
+  Pressable
 } from 'react-native';
 
 import { useFocusEffect } from '@react-navigation/native';
@@ -15,10 +16,11 @@ const IP = require('./ipcim');
 
 export default function User({ route, navigation }) {
 
-  const { felhasznaloId } = route.params;
+  const { felhasznaloId, felhasznaloNev } = route.params;
 
   const [kereses, setKereses] = useState(false);
   const [beszelgetesek, setBeszelgetesek] = useState([]);
+
 
   // --------------------------------------------------
   // KORÁBBI BESZÉLGETÉSEK BETÖLTÉSE
@@ -33,13 +35,20 @@ export default function User({ route, navigation }) {
       );
 
       if (!response.ok) {
-        console.log('Beszélgetések lekérése sikertelen');
+
+        console.log(
+          'Beszélgetések lekérése sikertelen'
+        );
+
         return;
       }
 
       const data = await response.json();
 
-      console.log('Korábbi beszélgetések:', data);
+      console.log(
+        'Korábbi beszélgetések:',
+        data
+      );
 
       setBeszelgetesek(data);
 
@@ -51,6 +60,7 @@ export default function User({ route, navigation }) {
       );
 
     }
+
   };
 
 
@@ -108,7 +118,7 @@ export default function User({ route, navigation }) {
 
       navigation.navigate('Chat', {
 
-        // Az új beszélgetésnek még nincs ID-ja
+        // Új beszélgetésnél még nincs talalkozas ID
         talalkozasId: null,
 
         partnerId: data.partnerId,
@@ -136,6 +146,7 @@ export default function User({ route, navigation }) {
       setKereses(false);
 
     }
+
   };
 
 
@@ -168,35 +179,47 @@ export default function User({ route, navigation }) {
 
     <View style={styles.container}>
 
+
+      {/* -------------------------------------------- */}
+      {/* ÜDVÖZLÉS */}
+      {/* -------------------------------------------- */}
+
       <Text style={styles.title}>
         Üdvözöllek!
       </Text>
 
-      <Text style={styles.sajatId}>
-        Saját ID: {felhasznaloId}
+
+      <Text style={styles.sajatnev}>
+        {felhasznaloNev}
       </Text>
 
 
+      {/* -------------------------------------------- */}
       {/* PARTNER KERESÉSE */}
+      {/* -------------------------------------------- */}
 
       <View style={styles.searchButton}>
 
         <Button
+
           title={
             kereses
               ? 'Partner keresése...'
-              : 'Véletlenszerű partner keresése'
+              : 'Partner keresése'
           }
 
           onPress={partnerKereses}
 
           disabled={kereses}
+
         />
 
       </View>
 
 
+      {/* -------------------------------------------- */}
       {/* KORÁBBI BESZÉLGETÉSEK */}
+      {/* -------------------------------------------- */}
 
       <Text style={styles.beszelgetesTitle}>
         Korábbi beszélgetések
@@ -219,33 +242,46 @@ export default function User({ route, navigation }) {
 
         }
 
+
         renderItem={({ item }) => (
 
-          <View style={styles.beszelgetes}>
+          <Pressable
+
+            style={({ pressed }) => [
+
+              styles.beszelgetes,
+
+              pressed &&
+              styles.beszelgetesPressed
+
+            ]}
+
+            onPress={() =>
+              beszelgetesMegnyitasa(item)
+            }
+
+          >
 
             <View style={styles.partnerInfo}>
+
+              {/* PARTNER NEVE */}
 
               <Text style={styles.partnerNev}>
                 {item.partnerNev}
               </Text>
 
-              <Text>
-                Partner ID: {item.partnerId}
+
+              {/* LEGUTOLSÓ ÜZENET */}
+
+              <Text style={styles.utolsoUzenet}>
+
+                {item.utolsoUzenet}
+
               </Text>
 
             </View>
 
-
-            <Button
-              title="Megnyitás"
-
-              onPress={() =>
-                beszelgetesMegnyitasa(item)
-              }
-
-            />
-
-          </View>
+          </Pressable>
 
         )}
 
@@ -257,11 +293,16 @@ export default function User({ route, navigation }) {
 }
 
 
-// --------------------------------------------------
+// ==================================================
 // STÍLUSOK
-// --------------------------------------------------
+// ==================================================
 
 const styles = StyleSheet.create({
+
+
+  // ----------------------------------------------
+  // FŐ KONTÉNER
+  // ----------------------------------------------
 
   container: {
 
@@ -272,6 +313,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff'
 
   },
+
+
+  // ----------------------------------------------
+  // ÜDVÖZLÉS
+  // ----------------------------------------------
 
   title: {
 
@@ -285,13 +331,23 @@ const styles = StyleSheet.create({
 
   },
 
-  sajatId: {
 
-    fontSize: 16,
+  // ----------------------------------------------
+  // FELHASZNÁLÓ NEVE
+  // ----------------------------------------------
 
-    marginBottom: 10
+  sajatnev: {
+
+    fontSize: 23,
+
+    marginBottom: 5
 
   },
+
+
+  // ----------------------------------------------
+  // PARTNER KERESÉSE GOMB
+  // ----------------------------------------------
 
   searchButton: {
 
@@ -300,6 +356,11 @@ const styles = StyleSheet.create({
     marginBottom: 20
 
   },
+
+
+  // ----------------------------------------------
+  // KORÁBBI BESZÉLGETÉSEK CÍME
+  // ----------------------------------------------
 
   beszelgetesTitle: {
 
@@ -312,6 +373,11 @@ const styles = StyleSheet.create({
     marginBottom: 15
 
   },
+
+
+  // ----------------------------------------------
+  // EGY BESZÉLGETÉS
+  // ----------------------------------------------
 
   beszelgetes: {
 
@@ -329,15 +395,38 @@ const styles = StyleSheet.create({
 
     borderRadius: 10,
 
-    marginBottom: 10
+    marginBottom: 10,
+
+    backgroundColor: '#fff'
 
   },
+
+
+  // ----------------------------------------------
+  // MEGNYOMOTT BESZÉLGETÉS
+  // ----------------------------------------------
+
+  beszelgetesPressed: {
+
+    opacity: 0.6
+
+  },
+
+
+  // ----------------------------------------------
+  // PARTNER INFORMÁCIÓ
+  // ----------------------------------------------
 
   partnerInfo: {
 
     flex: 1
 
   },
+
+
+  // ----------------------------------------------
+  // PARTNER NEVE
+  // ----------------------------------------------
 
   partnerNev: {
 
@@ -348,6 +437,26 @@ const styles = StyleSheet.create({
     marginBottom: 5
 
   },
+
+
+  // ----------------------------------------------
+  // LEGUTOLSÓ ÜZENET
+  // ----------------------------------------------
+
+  utolsoUzenet: {
+
+    fontSize: 14,
+
+    color: '#777',
+
+    marginTop: 2
+
+  },
+
+
+  // ----------------------------------------------
+  // HA NINCS BESZÉLGETÉS
+  // ----------------------------------------------
 
   nincsBeszelgetes: {
 

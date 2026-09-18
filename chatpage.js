@@ -318,17 +318,11 @@ export default function Chat({ route, navigation }) {
 
             <View style={styles.header}>
 
-                <Text style={styles.chatTitle}>
-                    Chat
-                </Text>
 
-                <Text style={styles.partnerNev}>
+                <Text style={styles.chatTitle}>
                     {partnerNev}
                 </Text>
 
-                <Text>
-                    Partner ID: {partnerId}
-                </Text>
 
             </View>
 
@@ -555,7 +549,7 @@ const styles = StyleSheet.create({
         borderTopWidth: 1,
 
         borderTopColor: '#ddd',
-        marginBottom: 50
+        marginBottom: '10%'
 
     },
 

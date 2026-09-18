@@ -54,7 +54,8 @@ export default function Loginpage() {
         console.log('Bejelentkezett felhasználó:', foundUser);
 
         navigation.navigate('User', {
-          felhasznaloId: foundUser.Id
+          felhasznaloId: foundUser.Id,
+          felhasznaloNev: foundUser.Felhasznalo
         });
       } else {
 
