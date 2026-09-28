@@ -20,9 +20,11 @@
       "supportsTablet": true
     },
     "android": {
-      "adaptiveIcon": {
+      "softwareKeyboardLayoutMode": "resize",
+        "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#FFFFFF"
+        
       }
     },
     "web": {

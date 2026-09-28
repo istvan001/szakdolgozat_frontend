@@ -5,8 +5,10 @@ import {
   Button,
   Alert,
   StyleSheet,
-  ScrollView
+  ScrollView,
+  Pressable
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 import { useNavigation } from '@react-navigation/native';
 
@@ -16,18 +18,13 @@ export default function Loginpage() {
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [jelszoLathato, setJelszoLathato] = useState(false);
 
   const navigation = useNavigation();
 
   const Login = async () => {
 
     try {
-
-      // Admin hozzáférés
-      if (username === 'admin' && password === 'admin') {
-        navigation.navigate('Admin');
-        return;
-      }
 
       // Felhasználó ellenőrzése
       const response = await fetch(IP.ipcim + '/login', {
@@ -41,21 +38,13 @@ export default function Loginpage() {
         })
       });
 
-      const users = await response.json();
-
-      const foundUser = users.find(
-        u =>
-          u.Felhasznalo === username &&
-          u.Jelszo === password
-      );
-
-      if (foundUser) {
-
-        console.log('Bejelentkezett felhasználó:', foundUser);
+      if (response.ok) {
+        const bejelentkezes = await response.json();
 
         navigation.navigate('User', {
-          felhasznaloId: foundUser.Id,
-          felhasznaloNev: foundUser.Felhasznalo
+          felhasznaloId: bejelentkezes.felhasznaloId,
+          felhasznaloNev: bejelentkezes.felhasznaloNev,
+          token: bejelentkezes.token
         });
       } else {
 
@@ -92,13 +81,23 @@ export default function Loginpage() {
         style={styles.input}
       />
 
-      <TextInput
-        placeholder="Jelszó"
-        secureTextEntry
-        value={password}
-        onChangeText={setPassword}
-        style={styles.input}
-      />
+      <View style={styles.jelszoMezo}>
+        <TextInput
+          placeholder="Jelszó"
+          secureTextEntry={!jelszoLathato}
+          value={password}
+          onChangeText={setPassword}
+          style={styles.jelszoInput}
+        />
+        <Pressable
+          onPress={() => setJelszoLathato(!jelszoLathato)}
+          accessibilityRole="button"
+          accessibilityLabel={jelszoLathato ? 'Jelszó elrejtése' : 'Jelszó megjelenítése'}
+          style={styles.szemGomb}
+        >
+          <Ionicons name={jelszoLathato ? 'eye-off-outline' : 'eye-outline'} size={24} color="#555" />
+        </Pressable>
+      </View>
 
       <Button
         title="Bejelentkezés"
@@ -126,5 +125,14 @@ const styles = StyleSheet.create({
     padding: 8,
     marginBottom: 12,
     borderRadius: 5
-  }
+  },
+  jelszoMezo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: 5,
+    marginBottom: 12
+  },
+  jelszoInput: { flex: 1, padding: 8, minWidth: 0 },
+  szemGomb: { padding: 8 }
 });
