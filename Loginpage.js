@@ -4,6 +4,7 @@ import {
   TextInput,
   Button,
   Alert,
+  Text,
   StyleSheet,
   ScrollView,
   Pressable
@@ -41,16 +42,16 @@ export default function Loginpage() {
       if (response.ok) {
         const bejelentkezes = await response.json();
 
-        navigation.navigate('User', {
+        navigation.navigate(bejelentkezes.admin ? 'Admin' : 'User', {
           felhasznaloId: bejelentkezes.felhasznaloId,
           felhasznaloNev: bejelentkezes.felhasznaloNev,
           token: bejelentkezes.token
         });
       } else {
-
+        const hiba = await response.text();
         Alert.alert(
           'Hiba',
-          'Hibás felhasználónév vagy jelszó'
+          hiba || 'Hibás felhasználónév vagy jelszó'
         );
 
       }
@@ -73,7 +74,7 @@ export default function Loginpage() {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-
+      <View>
       <TextInput
         placeholder="Felhasználónév"
         value={username}
@@ -97,6 +98,11 @@ export default function Loginpage() {
         >
           <Ionicons name={jelszoLathato ? 'eye-off-outline' : 'eye-outline'} size={24} color="#555" />
         </Pressable>
+        
+      
+      </View>
+            <Text onPress={() => navigation.navigate('EmailAction', { mode: 'reset' })} style={{ textAlign: 'center', marginVertical: 10 }}>Elfelejtetted a jelszavad?</Text>
+
       </View>
 
       <Button
@@ -108,7 +114,7 @@ export default function Loginpage() {
         title="Regisztráció"
         onPress={Register}
       />
-
+      
     </ScrollView>
   );
 }

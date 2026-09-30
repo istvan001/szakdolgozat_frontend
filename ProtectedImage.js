@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Image, Platform, View } from 'react-native';
+import { Platform, View } from 'react-native';
+import { Image } from 'expo-image';
 
 // A böngésző nem tud Authorization fejlécet adni egy sima <img> kéréshez.
 export default function ProtectedImage({ uri, token, style, resizeMode = 'cover' }) {
@@ -29,13 +30,13 @@ export default function ProtectedImage({ uri, token, style, resizeMode = 'cover'
 
   if (!uri || !token) return <View style={style} />;
   if (Platform.OS === 'web') {
-    return webUri ? <Image source={{ uri: webUri }} style={style} resizeMode={resizeMode} /> : <View style={style} />;
+    return webUri ? <Image source={{ uri: webUri }} style={style} contentFit={resizeMode} /> : <View style={style} />;
   }
   return (
     <Image
-      source={{ uri, headers: { Authorization: `Bearer ${token}` } }}
+      source={{ uri, headers: { Authorization: `Bearer ${token}` }, isAnimated: /\.gif(?:\?|$)/i.test(uri) }}
       style={style}
-      resizeMode={resizeMode}
+      contentFit={resizeMode}
     />
   );
 }

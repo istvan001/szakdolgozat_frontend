@@ -18,6 +18,9 @@ const keresheto = (ertek) => ertek.toLocaleLowerCase('hu').normalize('NFD').repl
 export default function Registerpage() {
   const navigation = useNavigation();
   const [lepes, setLepes] = useState(1);
+  const [kod, setKod] = useState('');
+  const [regisztracioId, setRegisztracioId] = useState(null);
+  const [igazolasToken, setIgazolasToken] = useState(null);
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -41,7 +44,9 @@ export default function Registerpage() {
     );
   }, [telepulesKereses, valasztottVarmegye]);
 
-  const tovabb = () => {
+  const jelzes = (cim, szoveg) => Platform.OS === 'web' ? window.alert(`${cim}: ${szoveg}`) : Alert.alert(cim, szoveg);
+  const tovabb = async () => {
+    if (mentes) return;
     if (!username.trim() || !email.trim() || !password) {
       Alert.alert('Hiányzó adat', 'Add meg a felhasználónevet, az e-mail-címet és a jelszót.');
       return;
@@ -50,7 +55,38 @@ export default function Registerpage() {
       Alert.alert('Jelszóhiba', 'A két jelszó nem egyezik meg.');
       return;
     }
-    setLepes(2);
+    setMentes(true);
+    try {
+      const response = await fetch(IP.ipcim + '/regisztracio-kod', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ Felhasznalo: username.trim(), Email: email.trim(), Jelszo: password, JelszoUjra: passwordMegerosites })
+      });
+      if (!response.ok) return jelzes('Hiba', await response.text());
+      const adat = await response.json();
+      setRegisztracioId(adat.regisztracioId);
+      setIgazolasToken(null);
+      setKod('');
+      setLepes(2);
+    } catch (error) {
+      jelzes('Hálózati hiba', 'Nem sikerült elérni a szervert.');
+    } finally { setMentes(false); }
+  };
+
+  const kodEllenorzes = async () => {
+    if (mentes) return;
+    setMentes(true);
+    try {
+      const response = await fetch(IP.ipcim + '/regisztracio-ellenorzes', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ regisztracioId, kod })
+      });
+      if (!response.ok) return jelzes('Hiba', await response.text());
+      const adat = await response.json();
+      setIgazolasToken(adat.igazolasToken);
+      setLepes(3);
+    } catch (error) {
+      jelzes('Hálózati hiba', 'Nem sikerült elérni a szervert.');
+    } finally { setMentes(false); }
   };
 
   const kepKivalasztasa = async () => {
@@ -90,6 +126,8 @@ export default function Registerpage() {
           Felhasznalo: username.trim(),
           Email: email.trim(),
           Jelszo: password,
+          regisztracioId,
+          igazolasToken,
           nem: nem === 'Nem szeretném megadni' ? null : (nem || null),
           lakhely: lakhely.trim() || null,
           eletkor: kor,
@@ -106,7 +144,7 @@ export default function Registerpage() {
         window.alert('Sikeres regisztráció! Most már bejelentkezhetsz.');
         navigation.navigate('Login');
       } else {
-        Alert.alert('Sikeres regisztráció', 'Most már bejelentkezhetsz!', [
+        Alert.alert('Sikeres regisztráció', 'Most már bejelentkezhetsz.', [
           { text: 'OK', onPress: () => navigation.navigate('Login') }
         ]);
       }
@@ -120,9 +158,9 @@ export default function Registerpage() {
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.kartya}>
-        <Text style={styles.cim}>{lepes === 1 ? 'Regisztráció' : 'Adatok rólad'}</Text>
+        <Text style={styles.cim}>{lepes === 1 ? 'Regisztráció' : lepes === 2 ? 'E-mail megerősítése' : 'Adatok rólad'}</Text>
         <Text style={styles.leiras}>
-          {lepes === 1 ? '1 / 2 · Belépési adatok' : '2 / 2 · A profiladatok megadása választható'}
+          {lepes === 1 ? '1 / 3 · Belépési adatok' : lepes === 2 ? '2 / 3 · Hitelesítő kód' : '3 / 3 · A profiladatok megadása választható'}
         </Text>
         {lepes === 1 ? (
           <>
@@ -141,7 +179,15 @@ export default function Registerpage() {
               </Pressable>
             </View>
             {passwordMegerosites && password !== passwordMegerosites ? <Text style={styles.hiba}>A két jelszó nem egyezik meg.</Text> : null}
-            <Button title="Tovább" onPress={tovabb} disabled={!username.trim() || !email.trim() || !password || password !== passwordMegerosites} />
+            <Button title={mentes ? 'Kód küldése...' : 'Tovább'} onPress={tovabb} disabled={mentes || !username.trim() || !email.trim() || !password || password !== passwordMegerosites} />
+          </>
+        ) : lepes === 2 ? (
+          <>
+            <Text style={styles.leiras}>Elküldtük a 8 számjegyű kódot erre a címre: {email.trim()}. A kód 10 percig érvényes.</Text>
+            <TextInput placeholder="Hitelesítő kód" value={kod} onChangeText={setKod} style={styles.input} keyboardType="number-pad" maxLength={8} />
+            <Button title={mentes ? 'Ellenőrzés...' : 'Tovább'} onPress={kodEllenorzes} disabled={mentes || !/^\d{8}$/.test(kod)} />
+            <Button title="Új kód küldése" onPress={tovabb} disabled={mentes} />
+            <Button title="Belépési adatok módosítása" onPress={() => { setIgazolasToken(null); setLepes(1); }} disabled={mentes} />
           </>
         ) : (
           <>
