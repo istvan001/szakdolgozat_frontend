@@ -1,42 +1,87 @@
 import React, { useEffect, useState } from 'react';
-import { Platform, View } from 'react-native';
+import { Platform, View, Text, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
 
-// A böngésző nem tud Authorization fejlécet adni egy sima <img> kéréshez.
-export default function ProtectedImage({ uri, token, style, resizeMode = 'cover' }) {
+export default function ProtectedImage({
+  uri,
+  token,
+  style,
+  resizeMode = 'cover'
+}) {
   const [webUri, setWebUri] = useState(null);
+  const [hiba, setHiba] = useState(false);
 
   useEffect(() => {
-    if (Platform.OS !== 'web' || !uri || !token) return;
+    setHiba(false);
     setWebUri(null);
-    let active = true;
+
+    if (Platform.OS !== 'web' || !uri || !token) return;
+
+    let aktiv = true;
     let objectUrl = null;
-    fetch(uri, { headers: { Authorization: `Bearer ${token}` } })
-      .then((response) => {
-        if (!response.ok) throw new Error('Kép betöltése sikertelen');
+
+    fetch(uri, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(response => {
+        if (!response.ok)
+          throw new Error(`Kép lekérése: HTTP ${response.status}`);
         return response.blob();
       })
-      .then((blob) => {
+      .then(blob => {
+        if (!aktiv) return;
         objectUrl = URL.createObjectURL(blob);
-        if (active) setWebUri(objectUrl);
-        else URL.revokeObjectURL(objectUrl);
+        setWebUri(objectUrl);
       })
-      .catch((error) => console.error('Kép betöltési hiba:', error));
+      .catch(error => {
+        if (!aktiv) return;
+        console.error('Kép betöltési hiba:', uri, error.message);
+        setHiba(true);
+      });
+
     return () => {
-      active = false;
+      aktiv = false;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
   }, [uri, token]);
 
-  if (!uri || !token) return <View style={style} />;
-  if (Platform.OS === 'web') {
-    return webUri ? <Image source={{ uri: webUri }} style={style} contentFit={resizeMode} /> : <View style={style} />;
-  }
+  const source = Platform.OS === 'web'
+    ? webUri ? { uri: webUri } : null
+    : uri && token ? {
+        uri,
+        headers: { Authorization: `Bearer ${token}` },
+        isAnimated: /\.gif(?:\?|$)/i.test(uri)
+      } : null;
+
   return (
-    <Image
-      source={{ uri, headers: { Authorization: `Bearer ${token}` }, isAnimated: /\.gif(?:\?|$)/i.test(uri) }}
-      style={style}
-      contentFit={resizeMode}
-    />
+    <View
+      pointerEvents="none"
+      style={[style, { overflow: 'hidden' }]}
+    >
+      {source && !hiba && (
+        <Image
+          source={source}
+          style={StyleSheet.absoluteFillObject}
+          contentFit={resizeMode}
+          onError={event => {
+            console.error('Kép betöltési hiba:', uri, event.error);
+            setHiba(true);
+          }}
+        />
+      )}
+
+      {hiba && (
+        <View style={{
+          flex: 1,
+          backgroundColor: '#eee',
+          justifyContent: 'center',
+          alignItems: 'center'
+        }}>
+          <Text style={{ color: '#555', textAlign: 'center' }}>
+            A kép nem tölthető be
+          </Text>
+        </View>
+      )}
+    </View>
   );
 }

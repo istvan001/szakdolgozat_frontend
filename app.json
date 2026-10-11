@@ -4,9 +4,9 @@
     "slug": "snack-954058d9-421f-48f8-b0cd-f0c03afeb67a",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/Rlogo.png",
     "splash": {
-      "image": "./assets/splash.png",
+      "image": "./assets/Rlogo.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -21,14 +21,14 @@
     },
     "android": {
       "softwareKeyboardLayoutMode": "resize",
-        "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/Rlogo.png",
         "backgroundColor": "#FFFFFF"
-        
-      }
+      },
+      "package": "com.anonymous.snack954058d9421f48f8b0cdf0c03afeb67a"
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/Rlogo.png"
     },
     "plugins": [
       "@react-native-community/datetimepicker",

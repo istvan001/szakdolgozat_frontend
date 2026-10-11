@@ -3,7 +3,7 @@ import { View, Text, Modal, Pressable, ScrollView, ActivityIndicator, StyleSheet
 import { Ionicons } from '@expo/vector-icons';
 import ProtectedImage from './ProtectedImage';
 const IP = require('./ipcim');
-export default function PartnerAdatlap({ partnerId, token, kepUrl, fejlec = false, children }) {
+export default function PartnerAdatlap({ partnerId, token, kepUrl, fejlec = false,online=false, children }) {
   const [nyitva, setNyitva] = useState(false);
   const [nagyKep, setNagyKep] = useState(false);
   const [profil, setProfil] = useState(null);
@@ -28,6 +28,7 @@ export default function PartnerAdatlap({ partnerId, token, kepUrl, fejlec = fals
       const response = await fetch(IP.ipcim + '/profil/' + partnerId, { headers: { Authorization: `Bearer ${token}` } });
       if (!response.ok) throw new Error(await response.text());
       const adat = await response.json();
+      console.log('Partner adatlap:', adat);
       if (aktualisKeres === keresszam.current) setProfil(adat);
     } catch (error) { if (aktualisKeres === keresszam.current) setHiba(error.message || 'Nem sikerült betölteni az adatlapot.'); }
     finally { if (aktualisKeres === keresszam.current) setBetoltes(false); }
@@ -36,8 +37,30 @@ export default function PartnerAdatlap({ partnerId, token, kepUrl, fejlec = fals
   const kep = profil?.profilkep_url || kepUrl;
   return <>
     <Pressable onPress={megnyitas} accessibilityRole="button" accessibilityLabel="Partner adatlapjának megnyitása" style={fejlec ? styles.fejlec : undefined}>
-      {kep ? <ProtectedImage uri={IP.ipcim + kep} token={token} style={styles.avatar} /> : <Ionicons name="person-circle" size={52} color="#aaa" />}
-      {children ? <View style={{ marginLeft: 10, flexShrink: 1 }}>{children}</View> : null}
+      <View pointerEvents="none" style={styles.avatarKeret}>
+  {kep ? (
+    <ProtectedImage
+      uri={IP.ipcim + kep}
+      token={token}
+      style={styles.avatar}
+    />
+  ) : (
+    <Ionicons name="person-circle" size={52} color="#aaa" />
+  )}
+
+  {online && <View style={styles.onlinePont} />}
+</View>
+
+{(children || fejlec) && (
+  <View style={{ marginLeft: 10, flexShrink: 1 }}>
+    {children}
+    {fejlec && (
+      <Text style={[styles.onlineFelirat, !online && { color: '#777' }]}>
+        {online ? 'Online' : 'Offline'}
+      </Text>
+    )}
+  </View>
+)}
     </Pressable>
     <Modal visible={nyitva} transparent animationType="fade" onRequestClose={() => nagyKep ? setNagyKep(false) : bezaras()}>
       {nagyKep && kep ? <View style={styles.nagyHatter}>
@@ -53,7 +76,12 @@ export default function PartnerAdatlap({ partnerId, token, kepUrl, fejlec = fals
               </Pressable>
               <Text style={styles.nev}>{profil.Felhasznalo}</Text>
               <Text style={styles.adat}>Nem: {profil.nem || 'Nincs megadva'}</Text>
-              <Text style={styles.adat}>Lakhely: {profil.lakhely || 'Nincs megadva'}</Text>
+              <Text style={styles.adat}>
+                Lakhely: {profil.lakhely || 'Nincs megadva'}
+                {Number.isFinite(profil.tavolsagKm)
+                  ? ` · kb. ${profil.tavolsagKm} km`
+                  : ''}
+              </Text>
               <Text style={styles.adat}>Életkor: {profil.eletkor != null ? `${profil.eletkor} év` : 'Nincs megadva'}</Text>
             </> : null}
           </ScrollView>
@@ -71,5 +99,26 @@ const styles = StyleSheet.create({
   nev: { fontSize: 23, fontWeight: 'bold', textAlign: 'center', marginVertical: 16 },
   adat: { fontSize: 17, marginBottom: 12 },
   nagyHatter: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#111' },
-  bezaras: { position: 'absolute', top: 45, right: 20, padding: 10, zIndex: 1 }
+  bezaras: { position: 'absolute', top: 45, right: 20, padding: 10, zIndex: 1 },
+  avatarKeret: {
+  width: 52,
+  height: 52,
+  position: 'relative'
+},
+onlinePont: {
+  position: 'absolute',
+  right: 0,
+  bottom: 0,
+  width: 15,
+  height: 15,
+  borderRadius: 8,
+  backgroundColor: '#31c65b',
+  borderWidth: 2,
+  borderColor: '#fff'
+},
+onlineFelirat: {
+  color: '#278a40',
+  fontSize: 12,
+  marginTop: 2
+},
 });
