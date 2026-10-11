@@ -24,6 +24,14 @@ export async function helyiErtesites(item) {
   });
 }
 export async function ertesitesekInditasa(token, navigation, felhasznaloId) {
+  console.log('[Értesítés] Beállítás elindult:', felhasznaloId);
+console.log('[Értesítés] Környezet:', Constants.executionEnvironment);
+console.log(
+  '[Értesítés] ProjectId:',
+  Constants.expoConfig?.extra?.eas?.projectId ||
+  Constants.easConfig?.projectId ||
+  'HIÁNYZIK'
+);
   if (!Notifications) return { stop: () => {}, allapot: 'A weben az olvasatlan jelzés működik.' };
   if (Platform.OS === 'android') await Notifications.setNotificationChannelAsync('uzenetek', {
     name: 'Üzenetek', importance: Notifications.AndroidImportance.HIGH, sound: 'default'
@@ -62,7 +70,11 @@ export async function ertesitesekInditasa(token, navigation, felhasznaloId) {
     return { stop, allapot: 'A telefonos push értesítések be vannak kapcsolva.' };
   } catch (error) {
     console.error('Push beállítási hiba:', error);
-    return { stop, allapot: 'Push beállítási hiba; a helyi értesítések működhetnek.' };
+    return {
+  stop,
+  allapot: 'Push beállítási hiba: ' +
+    (error?.message || String(error))
+};
   }
 }
 export async function ertesitesekKijelentkezes(token) {

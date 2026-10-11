@@ -11,7 +11,9 @@ import {
   Pressable,
   ActivityIndicator,
   useWindowDimensions,
-  ScrollView
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform
 } from 'react-native';
 import Slider from '@react-native-community/slider';
 import ProfilSzerkesztes from './ProfilSzerkesztes';
@@ -21,6 +23,7 @@ import ProtectedImage from './ProtectedImage';
 import PartnerAdatlap from './PartnerAdatlap';
 import { ertesitesekInditasa, ertesitesekKijelentkezes, helyiErtesites } from './NotificationSupport';
 import { useFocusEffect, useIsFocused } from '@react-navigation/native';
+import { useHeaderHeight } from '@react-navigation/elements';
 
 const IP = require('./ipcim');
 export default function User({ route, navigation }) {
@@ -57,10 +60,18 @@ export default function User({ route, navigation }) {
     width: ablakSzelesseg,
     height: ablakMagassag
   } = useWindowDimensions();
+
+  const fejlecMagassag = useHeaderHeight();
+
+  const oldalMagassag = Math.max(
+    0,
+    ablakMagassag - fejlecMagassag
+  );
   useEffect(() => {
     let leallitva = false, stop;
     ertesitesekInditasa(token, navigation, felhasznaloId).then((eredmeny) => {
       stop = eredmeny.stop;
+      console.log('Értesítési állapot:', eredmeny.allapot);
       if (leallitva) stop(); else setErtesitesAllapot(eredmeny.allapot);
     }).catch((error) => {
       console.error('Értesítési hiba:', error);
@@ -72,7 +83,7 @@ export default function User({ route, navigation }) {
     navigation.setOptions({
       title: 'Randotalk',
       headerLeft: () => (
-      <Pressable
+        <Pressable
           onPress={() => setOldalsavNyitva(true)}
           style={styles.fejlecAvatarGomb}
           accessibilityRole="button"
@@ -340,51 +351,63 @@ export default function User({ route, navigation }) {
   // KÉPERNYŐ
   // --------------------------------------------------
   return (
-    <View style={styles.container}>
+    <View
+      style={[
+        styles.container,
+        { minHeight: 0 },
+        Platform.OS === 'web' && {
+          height: oldalMagassag,
+          maxHeight: oldalMagassag,
+          overflow: 'hidden'
+        }
+      ]}
+    >
       {/* -------------------------------------------- */}
       {/* PARTNER KERESÉSE */}
       {/* -------------------------------------------- */}
       {adminNezet ? (
-      <Pressable
-    onPress={() => navigation.navigate('Admin', {
-      token,
-      felhasznaloId,
-      felhasznaloNev
-    })}
-    accessibilityRole="button"
-    style={({ pressed }) => [
-      styles.searchButton,
-      pressed && { opacity: 0.75 }
-    ]}
-  >
-    <Ionicons name="arrow-back" size={23} color="#fff" />
-    <Text style={styles.searchButtonText}>Vissza az admin oldalra</Text>
-  </Pressable>
-) : (
-  <Pressable
-    onPress={partnerKereses}
-    disabled={kereses}
-    accessibilityRole="button"
-    style={({ pressed }) => [
-      styles.searchButton,
-      (pressed || kereses) && { opacity: 0.75 }
-    ]}
-  >
-    {kereses ? (
-      <ActivityIndicator color="#fff" />
-    ) : (
-      <Ionicons name="search-outline" size={24} color="#fff" />
-    )}
-    <Text style={styles.searchButtonText}>
-      {kereses ? 'Keresés...' : 'Partner keresése'}
-    </Text>
-  </Pressable>
-)}
+        <Pressable
+          onPress={() => navigation.navigate('Admin', {
+            token,
+            felhasznaloId,
+            felhasznaloNev
+          })}
+          accessibilityRole="button"
+          style={({ pressed }) => [
+            styles.searchButton,
+            pressed && { opacity: 0.75 }
+          ]}
+        >
+          <Ionicons name="arrow-back" size={23} color="#fff" />
+          <Text style={styles.searchButtonText}>Vissza az admin oldalra</Text>
+        </Pressable>
+      ) : (
+        <Pressable
+          onPress={partnerKereses}
+          disabled={kereses}
+          accessibilityRole="button"
+          style={({ pressed }) => [
+            styles.searchButton,
+            (pressed || kereses) && { opacity: 0.75 }
+          ]}
+        >
+          {kereses ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Ionicons name="search-outline" size={24} color="#fff" />
+          )}
+          <Text style={styles.searchButtonText}>
+            {kereses ? 'Keresés...' : 'Partner keresése'}
+          </Text>
+        </Pressable>
+      )}
       {/* -------------------------------------------- */}
       {/* KORÁBBI BESZÉLGETÉSEK */}
       {/* -------------------------------------------- */}
       <Text style={styles.beszelgetesTitle}>Beszélgetések</Text>
       <FlatList
+        style={{ flex: 1, minHeight: 0 }}
+        showsVerticalScrollIndicator
         extraData={onlineAllapotok}
         refreshing={frissites}
         onRefresh={oldalFrissitese}
@@ -453,11 +476,22 @@ export default function User({ route, navigation }) {
             onPress={() => setOldalsavNyitva(false)}
             accessibilityLabel="Menü bezárása"
           />
-          <View style={[styles.oldalsav, { width: Math.min(320, ablakSzelesseg * 0.85) }]}>
+          <View
+            style={[
+              styles.oldalsav,
+              {
+                width: Math.min(320, ablakSzelesseg * 0.85),
+                height: oldalMagassag,
+                maxHeight: oldalMagassag,
+                minHeight: 0,
+                overflow: 'hidden'
+              }
+            ]}
+          >
             <ScrollView
-              style={{ flex: 1 }}
-              contentContainerStyle={{ paddingBottom: 24 }}
-              showsVerticalScrollIndicator={false}
+              style={{ flex: 1, minHeight: 0 }}
+              contentContainerStyle={{ paddingBottom: 32 }}
+              showsVerticalScrollIndicator
               keyboardShouldPersistTaps="handled"
             >
               <Pressable onPress={() => setOldalsavNyitva(false)} style={styles.bezarasGomb}>
@@ -527,83 +561,329 @@ export default function User({ route, navigation }) {
               </View>
             </ScrollView>
           </View>
-          <Modal visible={tiltottakNyitva} transparent animationType="slide" onRequestClose={() => setTiltottakNyitva(false)}>
-            <View style={{ flex: 1, justifyContent: 'center', padding: 22, backgroundColor: 'rgba(0,0,0,0.5)' }}>
-              <View style={{ maxHeight: '80%', backgroundColor: '#fff', borderRadius: 12, padding: 18 }}>
-                <Text style={{ fontSize: 20, fontWeight: 'bold', marginBottom: 12 }}>Letiltott felhasználók</Text>
-                {tiltottakBetoltes ? <Text style={{ padding: 12 }}>Betöltés...</Text> : (
-                  <FlatList data={tiltottak} keyExtractor={item => String(item.Id)}
-                    ListEmptyComponent={<Text style={{ paddingVertical: 14, color: '#666' }}>Nincs letiltott felhasználó.</Text>}
+          <Modal
+            visible={tiltottakNyitva}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setTiltottakNyitva(false)}
+          >
+            <View style={styles.beallitasHatter}>
+              <View style={[
+                styles.beallitasKartya,
+                { height: Math.min(ablakMagassag * 0.8, 640) }
+              ]}>
+                <View style={styles.beallitasFejlec}>
+                  <View style={styles.beallitasIkon}>
+                    <Ionicons name="ban-outline" size={25} color="#008D99" />
+                  </View>
+
+                  <Pressable
+                    onPress={() => setTiltottakNyitva(false)}
+                    style={styles.beallitasBezaras}
+                    accessibilityRole="button"
+                    accessibilityLabel="Letiltott felhasználók bezárása"
+                  >
+                    <Ionicons name="close" size={24} color="#52606D" />
+                  </Pressable>
+                </View>
+
+                <Text style={styles.beallitasCim}>Letiltott felhasználók</Text>
+                <Text style={styles.beallitasLeiras}>
+                  Itt kezelheted a tiltásaidat, és feloldhatod őket.
+                </Text>
+
+                {tiltottakBetoltes ? (
+                  <View style={styles.tiltottBetoltes}>
+                    <ActivityIndicator size="large" color="#008D99" />
+                    <Text style={styles.beallitasSeged}>Betöltés...</Text>
+                  </View>
+                ) : (
+                  <FlatList
+                    style={{ flex: 1, minHeight: 0 }}
+                    data={tiltottak}
+                    keyExtractor={item => String(item.Id)}
+                    contentContainerStyle={{ paddingBottom: 12 }}
+                    ListEmptyComponent={
+                      <View style={styles.tiltottUres}>
+                        <View style={styles.tiltottUresIkon}>
+                          <Ionicons
+                            name="shield-checkmark-outline"
+                            size={36}
+                            color="#008D99"
+                          />
+                        </View>
+                        <Text style={styles.tiltottUresCim}>
+                          Nincs letiltott felhasználó
+                        </Text>
+                        <Text style={styles.tiltottUresLeiras}>
+                          A letiltott felhasználók itt fognak megjelenni.
+                        </Text>
+                      </View>
+                    }
                     renderItem={({ item }) => (
-                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#eee' }}>
-                        <Text style={{ flex: 1, fontSize: 16 }}>{item.Felhasznalo}</Text>
-                        <Pressable disabled={feloldasId !== null} onPress={() => tiltasFeloldasa(item)} style={{ padding: 8 }}>
-                          <Text style={{ color: '#2678ba' }}>{feloldasId === item.Id ? 'Feloldás...' : 'Feloldás'}</Text>
+                      <View style={styles.tiltottSor}>
+                        <View style={styles.tiltottAvatarKeret}>
+                          {item.profilkep_url ? (
+                            <ProtectedImage
+                              uri={IP.ipcim + item.profilkep_url}
+                              token={token}
+                              style={styles.tiltottAvatar}
+                            />
+                          ) : (
+                            <Ionicons
+                              name="person-outline"
+                              size={25}
+                              color="#008D99"
+                            />
+                          )}
+                        </View>
+
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.tiltottNev} numberOfLines={1}>
+                            {item.Felhasznalo}
+                          </Text>
+                          <Text style={styles.tiltottFelirat}>Letiltva</Text>
+                        </View>
+
+                        <Pressable
+                          disabled={feloldasId !== null}
+                          onPress={() => tiltasFeloldasa(item)}
+                          accessibilityRole="button"
+                          accessibilityLabel={`${item.Felhasznalo} tiltásának feloldása`}
+                          style={({ pressed }) => [
+                            styles.feloldasGomb,
+                            (pressed || feloldasId !== null) && { opacity: 0.65 }
+                          ]}
+                        >
+                          {feloldasId === item.Id ? (
+                            <ActivityIndicator size="small" color="#008D99" />
+                          ) : (
+                            <Text style={styles.feloldasSzoveg}>Feloldás</Text>
+                          )}
                         </Pressable>
                       </View>
-                    )} />
+                    )}
+                  />
                 )}
-                <Button title="Frissítés" onPress={tiltottakBetoltese} disabled={tiltottakBetoltes} />
-                <Button title="Bezárás" onPress={() => setTiltottakNyitva(false)} />
+
+                <Pressable
+                  onPress={tiltottakBetoltese}
+                  disabled={tiltottakBetoltes}
+                  accessibilityRole="button"
+                  style={({ pressed }) => [
+                    styles.beallitasFoGomb,
+                    (pressed || tiltottakBetoltes) && { opacity: 0.65 }
+                  ]}
+                >
+                  <Ionicons name="refresh-outline" size={20} color="#fff" />
+                  <Text style={styles.beallitasFoSzoveg}>Lista frissítése</Text>
+                </Pressable>
+
+                <Pressable
+                  onPress={() => setTiltottakNyitva(false)}
+                  accessibilityRole="button"
+                  style={styles.beallitasMasodlagosGomb}
+                >
+                  <Text style={styles.beallitasMasodlagosSzoveg}>Bezárás</Text>
+                </Pressable>
               </View>
             </View>
           </Modal>
-          <Modal visible={partnerBeallitasNyitva} transparent animationType="slide" onRequestClose={() => setPartnerBeallitasNyitva(false)}>
-            <View style={{ flex: 1, justifyContent: 'center', padding: 22, backgroundColor: 'rgba(0,0,0,0.5)' }}>
-              <View style={{ maxHeight: '88%', backgroundColor: '#fff', borderRadius: 12, padding: 18 }}>
-                <Text style={{ fontSize: 20, fontWeight: 'bold', marginBottom: 14 }}>Partnerkeresési beállítások</Text>
-                {partnerBeallitasBetoltes ? <Text style={{ paddingVertical: 18 }}>Betöltés...</Text> : <>
-                  <Text style={{ marginBottom: 6 }}>Életkor (18–80 év)</Text>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 14 }}>
-                    <TextInput value={korMin} onChangeText={setKorMin} keyboardType="number-pad" maxLength={2} placeholder="18" style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 10, width: 75 }} />
-                    <Text style={{ marginHorizontal: 12 }}>–tól</Text>
-                    <TextInput value={korMax} onChangeText={setKorMax} keyboardType="number-pad" maxLength={2} placeholder="80" style={{ borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 10, width: 75 }} />
-                    <Text style={{ marginLeft: 12 }}>éves korig</Text>
+          <Modal
+            visible={partnerBeallitasNyitva}
+            transparent
+            animationType="fade"
+            onRequestClose={() => {
+              if (!partnerBeallitasMentes) setPartnerBeallitasNyitva(false);
+            }}
+          >
+            <KeyboardAvoidingView
+              style={styles.beallitasHatter}
+              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            >
+              <View style={[
+                styles.beallitasKartya,
+                {
+                  height: Math.min(ablakMagassag * 0.85, 700),
+                  maxHeight: ablakMagassag * 0.85,
+                  minHeight: 0
+                }
+              ]}>
+                <ScrollView
+                  style={{ flex: 1, minHeight: 0 }}
+                  keyboardShouldPersistTaps="handled"
+                  showsVerticalScrollIndicator={false}
+                >
+                  <View style={styles.beallitasFejlec}>
+                    <View style={styles.beallitasIkon}>
+                      <Ionicons name="options-outline" size={25} color="#008D99" />
+                    </View>
+
+                    <Pressable
+                      onPress={() => setPartnerBeallitasNyitva(false)}
+                      disabled={partnerBeallitasMentes}
+                      accessibilityRole="button"
+                      accessibilityLabel="Partnerkeresési beállítások bezárása"
+                      style={styles.beallitasBezaras}
+                    >
+                      <Ionicons name="close" size={24} color="#52606D" />
+                    </Pressable>
                   </View>
-                  <Text style={{ marginBottom: 6 }}>
-                    Maximális távolság a profilod településétől
+
+                  <Text style={styles.beallitasCim}>Partnerkeresési beállítások</Text>
+                  <Text style={styles.beallitasLeiras}>
+                    Állítsd be, milyen korú és milyen távolságban lévő
+                    beszélgetőpartnert keresel.
                   </Text>
 
-                  <Text style={{
-                    textAlign: 'center',
-                    fontSize: 20,
-                    fontWeight: 'bold',
-                    color: '#2678ba',
-                    marginBottom: 6
-                  }}>
-                    {tavolsagKm} km
-                  </Text>
+                  {partnerBeallitasBetoltes ? (
+                    <View style={{ paddingVertical: 30 }}>
+                      <ActivityIndicator size="large" color="#008D99" />
+                    </View>
+                  ) : (
+                    <>
+                      <View style={styles.keresesSzekcio}>
+                        <View style={styles.keresesSzekcioFejlec}>
+                          <Ionicons
+                            name="calendar-outline"
+                            size={21}
+                            color="#008D99"
+                          />
+                          <Text style={styles.keresesSzekcioCim}>Életkor</Text>
+                        </View>
 
-                  <Slider
-                    style={{ width: '100%', height: 44 }}
-                    minimumValue={10}
-                    maximumValue={500}
-                    step={1}
-                    value={Number(tavolsagKm)}
-                    onValueChange={ertek => setTavolsagKm(String(Math.round(ertek)))}
-                    minimumTrackTintColor="#2678ba"
-                    maximumTrackTintColor="#ddd"
-                    thumbTintColor="#2678ba"
-                    disabled={partnerBeallitasMentes}
-                    accessibilityLabel="Maximális keresési távolság"
-                  />
+                        <Text style={styles.beallitasSeged}>
+                          Válassz egy 18 és 80 év közötti tartományt.
+                        </Text>
 
-                  <View style={{
-                    flexDirection: 'row',
-                    justifyContent: 'space-between',
-                    marginBottom: 12
-                  }}>
-                    <Text style={{ color: '#666' }}>10 km</Text>
-                    <Text style={{ color: '#666' }}>500 km</Text>
-                  </View>
-                  <Text style={{ color: '#666', fontSize: 12, marginBottom: 12 }}>
-                    A távolság a profilban megadott település középpontjától számított közelítő légvonal. Koordinátaadatok: GeoNames (CC BY 4.0).
+                        <View style={styles.korMezok}>
+                          <View style={styles.korMezoResz}>
+                            <Text style={styles.korCimke}>Minimum</Text>
+                            <View style={styles.korInputKeret}>
+                              <TextInput
+                                value={korMin}
+                                onChangeText={setKorMin}
+                                keyboardType="number-pad"
+                                maxLength={2}
+                                placeholder="18"
+                                placeholderTextColor="#77828D"
+                                editable={!partnerBeallitasMentes}
+                                accessibilityLabel="Minimum életkor"
+                                style={styles.korInput}
+                              />
+                              <Text style={styles.korEv}>év</Text>
+                            </View>
+                          </View>
+
+                          <Text style={styles.korElvalaszto}>–</Text>
+
+                          <View style={styles.korMezoResz}>
+                            <Text style={styles.korCimke}>Maximum</Text>
+                            <View style={styles.korInputKeret}>
+                              <TextInput
+                                value={korMax}
+                                onChangeText={setKorMax}
+                                keyboardType="number-pad"
+                                maxLength={2}
+                                placeholder="80"
+                                placeholderTextColor="#77828D"
+                                editable={!partnerBeallitasMentes}
+                                accessibilityLabel="Maximum életkor"
+                                style={styles.korInput}
+                              />
+                              <Text style={styles.korEv}>év</Text>
+                            </View>
+                          </View>
+                        </View>
+                      </View>
+
+                      <View style={styles.keresesSzekcio}>
+                        <View style={styles.keresesSzekcioFejlec}>
+                          <Ionicons
+                            name="location-outline"
+                            size={21}
+                            color="#008D99"
+                          />
+                          <Text style={styles.keresesSzekcioCim}>Távolság</Text>
+                        </View>
+
+                        <Text style={styles.beallitasSeged}>
+                          Maximális távolság a profilod településétől.
+                        </Text>
+
+                        <View style={styles.tavolsagJelzes}>
+                          <Text style={styles.tavolsagErtek}>{tavolsagKm}</Text>
+                          <Text style={styles.tavolsagMertek}>km</Text>
+                        </View>
+
+                        <Slider
+                          style={{ width: '100%', height: 44 }}
+                          minimumValue={10}
+                          maximumValue={500}
+                          step={1}
+                          value={Number(tavolsagKm)}
+                          onValueChange={ertek =>
+                            setTavolsagKm(String(Math.round(ertek)))
+                          }
+                          minimumTrackTintColor="#008D99"
+                          maximumTrackTintColor="#DDE8EB"
+                          thumbTintColor="#008D99"
+                          disabled={partnerBeallitasMentes}
+                          accessibilityLabel="Maximális keresési távolság"
+                        />
+
+                        <View style={styles.tavolsagHatarok}>
+                          <Text style={styles.tavolsagHatarSzoveg}>10 km</Text>
+                          <Text style={styles.tavolsagHatarSzoveg}>500 km</Text>
+                        </View>
+                      </View>
+
+                      <View style={styles.keresesInfo}>
+                        <Ionicons
+                          name="information-circle-outline"
+                          size={20}
+                          color="#008D99"
+                        />
+                        <Text style={styles.keresesInfoSzoveg}>
+                          A távolság a profilban megadott település középpontjától
+                          számított közelítő légvonal. Koordinátaadatok:
+                          GeoNames (CC BY 4.0).
+                        </Text>
+                      </View>
+                    </>
+                  )}
+                </ScrollView>
+
+                <Pressable
+                  onPress={partnerBeallitasMentese}
+                  disabled={partnerBeallitasBetoltes || partnerBeallitasMentes}
+                  accessibilityRole="button"
+                  style={({ pressed }) => [
+                    styles.beallitasFoGomb,
+                    (pressed || partnerBeallitasBetoltes || partnerBeallitasMentes) &&
+                    { opacity: 0.65 }
+                  ]}
+                >
+                  {partnerBeallitasMentes ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Ionicons name="checkmark-outline" size={22} color="#fff" />
+                  )}
+                  <Text style={styles.beallitasFoSzoveg}>
+                    {partnerBeallitasMentes ? 'Mentés...' : 'Beállítások mentése'}
                   </Text>
-                </>}
-                <Button title={partnerBeallitasMentes ? 'Mentés...' : 'Mentés'} onPress={partnerBeallitasMentese} disabled={partnerBeallitasBetoltes || partnerBeallitasMentes} />
-                <Button title="Mégse" onPress={() => setPartnerBeallitasNyitva(false)} disabled={partnerBeallitasMentes} />
+                </Pressable>
+
+                <Pressable
+                  onPress={() => setPartnerBeallitasNyitva(false)}
+                  disabled={partnerBeallitasMentes}
+                  accessibilityRole="button"
+                  style={styles.beallitasMasodlagosGomb}
+                >
+                  <Text style={styles.beallitasMasodlagosSzoveg}>Mégse</Text>
+                </Pressable>
               </View>
-            </View>
+            </KeyboardAvoidingView>
           </Modal>
         </View>
       )}
@@ -904,5 +1184,266 @@ const styles = StyleSheet.create({
     lineHeight: 23,
     color: '#52606D',
     marginBottom: 12
+  },
+  beallitasHatter: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+    backgroundColor: 'rgba(23,33,43,0.55)'
+  },
+  beallitasKartya: {
+    width: '100%',
+    maxWidth: 520,
+    flexShrink: 1,
+    padding: 22,
+    borderRadius: 24,
+    backgroundColor: '#fff'
+  },
+  beallitasFejlec: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16
+  },
+  beallitasIkon: {
+    width: 52,
+    height: 52,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#EAF7F8'
+  },
+  beallitasBezaras: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F5F7F8'
+  },
+  beallitasCim: {
+    fontSize: 23,
+    fontWeight: '700',
+    color: '#17212B'
+  },
+  beallitasLeiras: {
+    fontSize: 14,
+    lineHeight: 22,
+    color: '#77828D',
+    marginTop: 8,
+    marginBottom: 22
+  },
+  beallitasSeged: {
+    fontSize: 13,
+    lineHeight: 20,
+    color: '#77828D',
+    marginTop: 8
+  },
+  beallitasFoGomb: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    minHeight: 52,
+    padding: 14,
+    marginTop: 16,
+    borderRadius: 15,
+    backgroundColor: '#008D99'
+  },
+  beallitasFoSzoveg: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '700'
+  },
+  beallitasMasodlagosGomb: {
+    minHeight: 46,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 12,
+    marginTop: 10,
+    borderRadius: 13,
+    backgroundColor: '#EAF7F8'
+  },
+  beallitasMasodlagosSzoveg: {
+    color: '#008D99',
+    fontSize: 14,
+    fontWeight: '600'
+  },
+  tiltottBetoltes: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10
+  },
+  tiltottUres: {
+    alignItems: 'center',
+    paddingVertical: 36,
+    paddingHorizontal: 12
+  },
+  tiltottUresIkon: {
+    width: 78,
+    height: 78,
+    borderRadius: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#EAF7F8',
+    marginBottom: 18
+  },
+  tiltottUresCim: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#17212B',
+    textAlign: 'center'
+  },
+  tiltottUresLeiras: {
+    fontSize: 14,
+    lineHeight: 22,
+    color: '#77828D',
+    textAlign: 'center',
+    marginTop: 8
+  },
+  tiltottSor: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    padding: 12,
+    marginBottom: 10,
+    borderRadius: 16,
+    backgroundColor: '#F5F7F8'
+  },
+  tiltottAvatarKeret: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: '#EAF7F8',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  tiltottAvatar: {
+    width: 46,
+    height: 46,
+    borderRadius: 23
+  },
+  tiltottNev: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#17212B'
+  },
+  tiltottFelirat: {
+    fontSize: 12,
+    color: '#77828D',
+    marginTop: 4
+  },
+  feloldasGomb: {
+    minWidth: 72,
+    minHeight: 40,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#EAF7F8'
+  },
+  feloldasSzoveg: {
+    color: '#008D99',
+    fontSize: 13,
+    fontWeight: '700'
+  },
+  keresesSzekcio: {
+    padding: 16,
+    borderRadius: 17,
+    backgroundColor: '#F5F7F8',
+    marginBottom: 14
+  },
+  keresesSzekcioFejlec: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8
+  },
+  keresesSzekcioCim: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#17212B'
+  },
+  korMezok: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 16
+  },
+  korMezoResz: {
+    flex: 1
+  },
+  korCimke: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#77828D',
+    marginBottom: 7
+  },
+  korInputKeret: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E1E8EC',
+    borderRadius: 13,
+    backgroundColor: '#fff',
+    paddingHorizontal: 12
+  },
+  korInput: {
+    flex: 1,
+    minWidth: 0,
+    paddingVertical: 12,
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#17212B'
+  },
+  korEv: {
+    fontSize: 13,
+    color: '#77828D'
+  },
+  korElvalaszto: {
+    fontSize: 20,
+    color: '#77828D',
+    marginTop: 20
+  },
+  tavolsagJelzes: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: 18,
+    marginBottom: 6
+  },
+  tavolsagErtek: {
+    fontSize: 38,
+    fontWeight: '700',
+    color: '#008D99'
+  },
+  tavolsagMertek: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#008D99'
+  },
+  tavolsagHatarok: {
+    flexDirection: 'row',
+    justifyContent: 'space-between'
+  },
+  tavolsagHatarSzoveg: {
+    fontSize: 12,
+    color: '#77828D'
+  },
+  keresesInfo: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    padding: 12,
+    borderRadius: 13,
+    backgroundColor: '#EAF7F8'
+  },
+  keresesInfoSzoveg: {
+    flex: 1,
+    fontSize: 12,
+    lineHeight: 19,
+    color: '#52606D'
   },
 });

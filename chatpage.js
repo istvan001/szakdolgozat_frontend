@@ -43,22 +43,32 @@ export default function Chat({ route, navigation }) {
     felhasznaloId,
     token
   } = route.params;
-const [visszavonasFolyamatban, setVisszavonasFolyamatban] = useState(false);
-const visszavonasZar = useRef(false);
+
   const insets = useSafeAreaInsets();
   const fokuszban = useIsFocused();
   const onlineAllapotok = useOnlineAllapot(token, [partnerId], fokuszban);
-  const [appAktiv, setAppAktiv] = useState(
-    AppState.currentState === 'active'
-  );
-const [reakcioFolyamatban, setReakcioFolyamatban] = useState(false);
-const reakcioZar = useRef(false);
   const {
     width: ablakSzelesseg,
     height: ablakMagassag
   } = useWindowDimensions();
-
   const navigacioFejlecMagassag = useHeaderHeight();
+
+  const [appAktiv, setAppAktiv] = useState(
+    AppState.currentState === 'active'
+  );
+  const [aktualisTalalkozasId, setAktualisTalalkozasId] = useState(
+    talalkozasId || null
+  );
+  const [uzenet, setUzenet] = useState('');
+  const [uzenetek, setUzenetek] = useState([]);
+  const [kuldesFolyamatban, setKuldesFolyamatban] = useState(false);
+  const [partnerIr, setPartnerIr] = useState(false);
+  const [valaszUzenet, setValaszUzenet] = useState(null);
+  const [valaszMenu, setValaszMenu] = useState(null);
+  const [kiemeltUzenetId, setKiemeltUzenetId] = useState(null);
+  const [reakcioFolyamatban, setReakcioFolyamatban] = useState(false);
+  const [visszavonasFolyamatban, setVisszavonasFolyamatban] = useState(false);
+  const [kepMenuNyitva, setKepMenuNyitva] = useState(false);
   const [megnyitottKep, setMegnyitottKep] = useState(null);
   const [jelentesNyitva, setJelentesNyitva] = useState(false);
   const [jelentesOk, setJelentesOk] = useState('Zaklatás');
@@ -66,17 +76,9 @@ const reakcioZar = useRef(false);
   const [muveletFolyamatban, setMuveletFolyamatban] = useState(false);
   const [chatFejlecMagassag, setChatFejlecMagassag] = useState(90);
   const [kuldesSavMagassag, setKuldesSavMagassag] = useState(70);
-  const [aktualisTalalkozasId, setAktualisTalalkozasId] = useState(
-    talalkozasId || null
-  );
-  const [uzenet, setUzenet] = useState('');
-  const [kuldesFolyamatban, setKuldesFolyamatban] = useState(false);
-  const [uzenetek, setUzenetek] = useState([]);
-  const [partnerIr, setPartnerIr] = useState(false);
-  const [valaszUzenet, setValaszUzenet] = useState(null);
-  const [valaszMenu, setValaszMenu] = useState(null);
-  const [kiemeltUzenetId, setKiemeltUzenetId] = useState(null);
 
+  const visszavonasZar = useRef(false);
+  const reakcioZar = useRef(false);
   const muveletZar = useRef(false);
   const kuldesZar = useRef(false);
   const billentyuKepZar = useRef(false);
@@ -93,6 +95,21 @@ const reakcioZar = useRef(false);
   const ugrasCel = useRef(null);
   const ugrasTimer = useRef(null);
   const kiemelesTimer = useRef(null);
+  const aktualisChatIdRef = useRef(aktualisTalalkozasId);
+
+  aktualisChatIdRef.current = aktualisTalalkozasId;
+
+  const webOldalMagassag = Math.max(
+    0,
+    ablakMagassag - navigacioFejlecMagassag
+  );
+  const webListaMagassag = Math.max(
+    0,
+    webOldalMagassag -
+      chatFejlecMagassag -
+      kuldesSavMagassag -
+      24
+  );
 
   useEffect(() => {
     const listener = AppState.addEventListener('change', state => {
@@ -226,7 +243,6 @@ const reakcioZar = useRef(false);
     const maxId = Math.max(
       ...uzenetek.map(item => Number(item.id) || 0)
     );
-
     if (!maxId) return;
 
     fetch(IP.ipcim + '/uzenetek-olvasott', {
@@ -263,11 +279,11 @@ const reakcioZar = useRef(false);
 
   const valaszKivalasztasa = item => {
     const aktualis = uzenetek.find(
-  u => Number(u.id) === Number(item.id)
-);
+      u => Number(u.id) === Number(item.id)
+    );
 
-if (Number(aktualis?.visszavont) === 1) return;
-    if (kuldesZar.current) return;
+    if (Number(aktualis?.visszavont) === 1 || kuldesZar.current) return;
+
     setValaszUzenet(item);
     setValaszMenu(null);
     setTimeout(() => inputRef.current?.focus(), 150);
@@ -312,19 +328,16 @@ if (Number(aktualis?.visszavont) === 1) return;
 
   const ugrasSikertelen = info => {
     const cel = ugrasCel.current;
-
     if (!cel || cel.index !== info.index ||
         cel.probalkozas >= 8) return;
 
     cel.probalkozas++;
-
     listaRef.current?.scrollToOffset({
       offset: Math.max(0, info.averageItemLength * info.index),
       animated: false
     });
 
     clearTimeout(ugrasTimer.current);
-
     ugrasTimer.current = setTimeout(() => {
       if (ugrasCel.current === cel) {
         listaRef.current?.scrollToIndex({
@@ -384,31 +397,37 @@ if (Number(aktualis?.visszavont) === 1) return;
   }, [aktualisTalalkozasId, fokuszban, appAktiv, token]);
 
   useEffect(() => {
-    const wsUrl = IP.ipcim.replace(/^http/, 'ws');
-    const socket = new WebSocket(wsUrl);
+    if (!token || !fokuszban || !appAktiv) return;
+
+    let leallitva = false;
+    const socket = new WebSocket(IP.ipcim.replace(/^http/, 'ws'));
     ws.current = socket;
 
     socket.onopen = () => {
+      if (leallitva) return;
       socket.send(JSON.stringify({ type: 'register', token }));
     };
 
     socket.onmessage = event => {
       try {
         const data = JSON.parse(event.data);
+
         if (data.type === 'messageWithdrawn') {
-  if (Number(data.talalkozasId) === Number(talalkozasId) ||
-      Number(data.talalkozasId) === Number(aktualisChatIdRef.current)) {
-    visszavonasFrissitese(data.uzenetId);
-  }
-  return;
-}
+          if (Number(data.talalkozasId) === Number(talalkozasId) ||
+              Number(data.talalkozasId) === Number(aktualisChatIdRef.current)) {
+            visszavonasFrissitese(data.uzenetId);
+          }
+          return;
+        }
+
         if (data.type === 'reaction') {
-  if (Number(data.talalkozasId) === Number(talalkozasId) ||
-      Number(data.talalkozasId) === Number(aktualisChatIdRef.current)) {
-    reakcioFrissitese(data.uzenetId, data.reakcio);
-  }
-  return;
-}
+          if (Number(data.talalkozasId) === Number(talalkozasId) ||
+              Number(data.talalkozasId) === Number(aktualisChatIdRef.current)) {
+            reakcioFrissitese(data.uzenetId, data.reakcio);
+          }
+          return;
+        }
+
         if (data.type === 'typing') {
           if (Number(data.partnerId) !== Number(partnerId) ||
               !chatAktiv.current) return;
@@ -425,6 +444,7 @@ if (Number(aktualis?.visszavont) === 1) return;
         }
 
         if (data.type !== 'newMessage' || !data.message) return;
+
         const incomingMessage = data.message;
 
         if (Number(incomingMessage.kuldo_id) !== Number(partnerId)) {
@@ -440,13 +460,11 @@ if (Number(aktualis?.visszavont) === 1) return;
         partnerGepelesTorlese();
         automatikusGorgetes.current = true;
         setAktualisTalalkozasId(elozo => elozo || data.talalkozasId);
-
         setUzenetek(elozo => (
           elozo.some(item => Number(item.id) === Number(incomingMessage.id))
             ? elozo
             : [...elozo, incomingMessage]
         ));
-
         listaAljaraGorgetes(true, 300);
       } catch (error) {
         console.error('WebSocket üzenet feldolgozási hiba:', error);
@@ -454,7 +472,11 @@ if (Number(aktualis?.visszavont) === 1) return;
     };
 
     socket.onerror = error => {
-      console.error('WebSocket hiba:', error);
+      if (leallitva || AppState.currentState !== 'active') return;
+      console.warn(
+        'WebSocket kapcsolódási hiba:',
+        error.message || 'A kapcsolat megszakadt.'
+      );
     };
 
     socket.onclose = () => {
@@ -464,12 +486,18 @@ if (Number(aktualis?.visszavont) === 1) return;
     };
 
     return () => {
+      leallitva = true;
       gepelesLeallitasa();
       clearTimeout(partnerGepelesIdozito.current);
+      partnerGepelesTorlese();
+      socket.onopen = null;
+      socket.onmessage = null;
+      socket.onerror = null;
+      socket.onclose = null;
       socket.close();
       if (ws.current === socket) ws.current = null;
     };
-  }, [felhasznaloId, partnerId, token]);
+  }, [felhasznaloId, partnerId, token, fokuszban, appAktiv]);
 
   const kepKivalasztasa = async () => {
     try {
@@ -486,6 +514,38 @@ if (Number(aktualis?.visszavont) === 1) return;
     } catch (error) {
       console.error('Kép kiválasztási hiba:', error);
       Alert.alert('Hiba', 'Nem sikerült kiválasztani a képet.');
+    }
+  };
+
+  const fotoKeszitese = async () => {
+    if (kuldesZar.current) return;
+
+    try {
+      if (Platform.OS !== 'web') {
+        const engedely = await ImagePicker.requestCameraPermissionsAsync();
+
+        if (!engedely.granted) {
+          Alert.alert(
+            'Kameraengedély szükséges',
+            'A fotókészítéshez engedélyezd a kamera használatát a telefon beállításaiban.'
+          );
+          return;
+        }
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ['images'],
+        allowsEditing: false,
+        quality: 0.6,
+        base64: true
+      });
+
+      if (!result.canceled && result.assets?.[0]?.base64) {
+        await uzenetKuldese(result.assets[0].base64);
+      }
+    } catch (error) {
+      console.error('Fotókészítési hiba:', error);
+      Alert.alert('Hiba', 'Nem sikerült elkészíteni a fotót.');
     }
   };
 
@@ -512,6 +572,7 @@ if (Number(aktualis?.visszavont) === 1) return;
       if (!fajl.exists) {
         throw new Error('A billentyűzetből érkező fájl nem olvasható.');
       }
+
       if (fajl.size > 4 * 1024 * 1024) {
         throw new Error('Legfeljebb 4 MB-os kép vagy GIF küldhető.');
       }
@@ -591,13 +652,11 @@ if (Number(aktualis?.visszavont) === 1) return;
       };
 
       automatikusGorgetes.current = true;
-
       setUzenetek(elozo => (
         elozo.some(item => Number(item.id) === Number(data.uzenetId))
           ? elozo
           : [...elozo, sajatUzenet]
       ));
-
       setValaszUzenet(elozo => (
         elozo?.id === kivalasztottValasz?.id ? null : elozo
       ));
@@ -614,154 +673,149 @@ if (Number(aktualis?.visszavont) === 1) return;
   };
 
   const reakcioFrissitese = (uzenetId, reakcio) => {
-  setUzenetek(elozo => elozo.map(item => (
-   Number(item.id) === Number(uzenetId) &&
-Number(item.visszavont) !== 1
-      ? { ...item, reakcio }
-      : item
-  )));
-};
+    setUzenetek(elozo => elozo.map(item => (
+      Number(item.id) === Number(uzenetId) &&
+      Number(item.visszavont) !== 1
+        ? { ...item, reakcio }
+        : item
+    )));
+  };
 
-const reakcioKuldes = async (item, emoji) => {
-  if (!item || reakcioZar.current ||
-      Number(item.kuldo_id) === Number(felhasznaloId)) return;
+  const reakcioKuldes = async (item, emoji) => {
+    if (!item || reakcioZar.current ||
+        Number(item.kuldo_id) === Number(felhasznaloId)) return;
 
-  const aktualis = uzenetek.find(
-    u => Number(u.id) === Number(item.id)
-  ) || item;
+    const aktualis = uzenetek.find(
+      u => Number(u.id) === Number(item.id)
+    ) || item;
 
-  const azonosReakcio =
-    Number(aktualis.reakcio?.felhasznaloId) === Number(felhasznaloId) &&
-    aktualis.reakcio?.emoji === emoji;
+    const azonosReakcio =
+      Number(aktualis.reakcio?.felhasznaloId) === Number(felhasznaloId) &&
+      aktualis.reakcio?.emoji === emoji;
 
-  reakcioZar.current = true;
-  setReakcioFolyamatban(true);
+    reakcioZar.current = true;
+    setReakcioFolyamatban(true);
 
-  try {
-    const response = await fetch(IP.ipcim + '/uzenet-reakcio', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`
-      },
-      body: JSON.stringify({
-        uzenetId: Number(item.id),
-        emoji: azonosReakcio ? null : emoji
-      })
-    });
+    try {
+      const response = await fetch(IP.ipcim + '/uzenet-reakcio', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          uzenetId: Number(item.id),
+          emoji: azonosReakcio ? null : emoji
+        })
+      });
 
-    if (!response.ok) throw new Error(await response.text());
+      if (!response.ok) throw new Error(await response.text());
 
-    const adat = await response.json();
-    reakcioFrissitese(adat.uzenetId, adat.reakcio);
-    setValaszMenu(null);
-  } catch (error) {
-    Alert.alert('Hiba', error.message || 'Nem sikerült reagálni.');
-  } finally {
-    reakcioZar.current = false;
-    setReakcioFolyamatban(false);
-  }
-};
-
-const visszavonasFrissitese = uzenetId => {
-  setUzenetek(elozo => elozo.map(item => {
-    const eredeti = Number(item.id) === Number(uzenetId);
-    const erreValaszol =
-      Number(item.valasz_uzenet_id) === Number(uzenetId);
-
-    if (eredeti) {
-      return {
-        ...item,
-        visszavont: 1,
-        uzenet: '',
-        kep_url: null,
-        reakcio: null,
-        valasz: null
-      };
+      const adat = await response.json();
+      reakcioFrissitese(adat.uzenetId, adat.reakcio);
+      setValaszMenu(null);
+    } catch (error) {
+      Alert.alert('Hiba', error.message || 'Nem sikerült reagálni.');
+    } finally {
+      reakcioZar.current = false;
+      setReakcioFolyamatban(false);
     }
+  };
 
-    return erreValaszol ? { ...item, valasz: null } : item;
-  }));
+  const visszavonasFrissitese = uzenetId => {
+    setUzenetek(elozo => elozo.map(item => {
+      const eredeti = Number(item.id) === Number(uzenetId);
+      const erreValaszol =
+        Number(item.valasz_uzenet_id) === Number(uzenetId);
 
-  setValaszUzenet(elozo => (
-    Number(elozo?.id) === Number(uzenetId) ? null : elozo
-  ));
+      if (eredeti) {
+        return {
+          ...item,
+          visszavont: 1,
+          uzenet: '',
+          kep_url: null,
+          reakcio: null,
+          valasz: null
+        };
+      }
 
-  setValaszMenu(elozo => (
-    Number(elozo?.id) === Number(uzenetId) ? null : elozo
-  ));
-};
+      return erreValaszol ? { ...item, valasz: null } : item;
+    }));
 
-const uzenetVisszavonasa = async item => {
-  if (!item || visszavonasZar.current ||
-      Number(item.kuldo_id) !== Number(felhasznaloId)) return;
+    setValaszUzenet(elozo => (
+      Number(elozo?.id) === Number(uzenetId) ? null : elozo
+    ));
+    setValaszMenu(elozo => (
+      Number(elozo?.id) === Number(uzenetId) ? null : elozo
+    ));
+  };
 
-  visszavonasZar.current = true;
-  setVisszavonasFolyamatban(true);
+  const uzenetVisszavonasa = async item => {
+    if (!item || visszavonasZar.current ||
+        Number(item.kuldo_id) !== Number(felhasznaloId)) return;
 
-  try {
-    const response = await fetch(IP.ipcim + '/uzenet-visszavonas', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`
-      },
-      body: JSON.stringify({
-        uzenetId: Number(item.id)
-      })
-    });
+    visszavonasZar.current = true;
+    setVisszavonasFolyamatban(true);
 
-    if (!response.ok) throw new Error(await response.text());
+    try {
+      const response = await fetch(IP.ipcim + '/uzenet-visszavonas', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ uzenetId: Number(item.id) })
+      });
 
-    const adat = await response.json();
-    visszavonasFrissitese(adat.uzenetId);
-    setValaszMenu(null);
-  } catch (error) {
-    Alert.alert(
-      'Hiba',
-      error.message || 'Nem sikerült visszavonni az üzenetet.'
-    );
-  } finally {
-    visszavonasZar.current = false;
-    setVisszavonasFolyamatban(false);
-  }
-};
+      if (!response.ok) throw new Error(await response.text());
+
+      const adat = await response.json();
+      visszavonasFrissitese(adat.uzenetId);
+      setValaszMenu(null);
+    } catch (error) {
+      Alert.alert(
+        'Hiba',
+        error.message || 'Nem sikerült visszavonni az üzenetet.'
+      );
+    } finally {
+      visszavonasZar.current = false;
+      setVisszavonasFolyamatban(false);
+    }
+  };
+
   const utolsoSajatUzenetId = uzenetek.reduce((utolso, item) => {
-  if (Number(item.kuldo_id) !== Number(felhasznaloId) ||
-      Number(item.visszavont) === 1) return utolso;
-  return Math.max(utolso, Number(item.id) || 0);
-}, 0);
+    if (Number(item.kuldo_id) !== Number(felhasznaloId) ||
+        Number(item.visszavont) === 1) return utolso;
+
+    return Math.max(utolso, Number(item.id) || 0);
+  }, 0);
+
   const uzenetMegjelenitese = ({ item }) => {
     const sajat = Number(item.kuldo_id) === Number(felhasznaloId);
-    if (Number(item.visszavont) === 1) {
-  return (
-    <View
-      style={[
-        styles.uzenetSor,
-        sajat ? styles.sajatSor : styles.partnerSor
-      ]}
-    >
-      <View
-        style={[
-          styles.uzenetBuborek,
-          styles.visszavontBuborek
-        ]}
-      >
-        <Text style={styles.visszavontSzoveg}>
-          Az üzenetet visszavonták
-        </Text>
-      </View>
-    </View>
-  );
-}
 
-    return (
-      <View
-        style={[
+    if (Number(item.visszavont) === 1) {
+      return (
+        <View style={[
           styles.uzenetSor,
           sajat ? styles.sajatSor : styles.partnerSor
-        ]}
-      >
+        ]}>
+          <View style={[
+            styles.uzenetBuborek,
+            styles.visszavontBuborek
+          ]}>
+            <Text style={styles.visszavontSzoveg}>
+              Az üzenetet visszavonták
+            </Text>
+          </View>
+        </View>
+      );
+    }
+
+    return (
+      <View style={[
+        styles.uzenetSor,
+        sajat ? styles.sajatSor : styles.partnerSor
+      ]}>
         <Pressable
           onLongPress={() => {
             if (!kuldesZar.current) setValaszMenu(item);
@@ -809,36 +863,34 @@ const uzenetVisszavonasa = async item => {
           ) : null}
 
           {item.uzenet ? (
-            <Text
-              style={[
-                styles.uzenetSzoveg,
-                sajat ? styles.sajatSzoveg : styles.partnerSzoveg
-              ]}
-            >
+            <Text style={[
+              styles.uzenetSzoveg,
+              sajat ? styles.sajatSzoveg : styles.partnerSzoveg
+            ]}>
               {item.uzenet}
             </Text>
           ) : null}
+
           {item.reakcio && (
-  <Pressable
-    disabled={sajat || reakcioFolyamatban}
-    onPress={() => reakcioKuldes(item, item.reakcio.emoji)}
-    style={styles.reakcioJelzes}
-    accessibilityRole="button"
-    accessibilityLabel={
-      sajat
-        ? 'A partnered reakciója'
-        : 'Reakció eltávolítása'
-    }
-  >
-    <Text style={{ fontSize: 18 }}>{item.reakcio.emoji}</Text>
-  </Pressable>
-)}
-                </Pressable>
+            <Pressable
+              disabled={sajat || reakcioFolyamatban}
+              onPress={() => reakcioKuldes(item, item.reakcio.emoji)}
+              style={styles.reakcioJelzes}
+              accessibilityRole="button"
+              accessibilityLabel={
+                sajat ? 'A partnered reakciója' : 'Reakció eltávolítása'
+              }
+            >
+              <Text style={{ fontSize: 18 }}>{item.reakcio.emoji}</Text>
+            </Pressable>
+          )}
+        </Pressable>
+
         {sajat &&
-         Number(item.id) === utolsoSajatUzenetId &&
-         Number(item.olvasott) === 1 && (
-          <Text style={styles.lattta}>Látta</Text>
-        )}
+          Number(item.id) === utolsoSajatUzenetId &&
+          Number(item.olvasott) === 1 && (
+            <Text style={styles.lattta}>Látta</Text>
+          )}
       </View>
     );
   };
@@ -848,7 +900,10 @@ const uzenetVisszavonasa = async item => {
       style={[
         styles.safeArea,
         Platform.OS === 'web' && {
-          height: ablakMagassag - navigacioFejlecMagassag
+          height: webOldalMagassag,
+          maxHeight: webOldalMagassag,
+          minHeight: 0,
+          overflow: 'hidden'
         }
       ]}
       edges={['bottom']}
@@ -888,9 +943,9 @@ const uzenetVisszavonasa = async item => {
               disabled={muveletFolyamatban || !aktualisTalalkozasId}
               style={{ paddingVertical: 5 }}
             >
-              <Text
-                style={{ color: aktualisTalalkozasId ? '#555' : '#aaa' }}
-              >
+              <Text style={{
+                color: aktualisTalalkozasId ? '#555' : '#aaa'
+              }}>
                 Jelentés
               </Text>
             </Pressable>
@@ -901,21 +956,19 @@ const uzenetVisszavonasa = async item => {
           <ScrollView
             ref={listaRef}
             style={{
-              height: Math.max(
-                120,
-                ablakMagassag - navigacioFejlecMagassag -
-                chatFejlecMagassag - kuldesSavMagassag - 12
-              ),
+              height: webListaMagassag,
+              minHeight: 0,
               flexGrow: 0,
               flexShrink: 0
             }}
+            showsVerticalScrollIndicator
             contentContainerStyle={styles.listaTartalom}
             onContentSizeChange={() => listaAljaraGorgetes(false, 0)}
             keyboardShouldPersistTaps="handled"
           >
-            {uzenetek.map((item, index) => (
+            {uzenetek.map(item => (
               <View
-                key={item.id ?? index}
+                key={item.id}
                 onLayout={event => {
                   webPoziciok.current.set(
                     Number(item.id),
@@ -979,28 +1032,31 @@ const uzenetVisszavonasa = async item => {
             )}
 
             {partnerIr && fokuszban && appAktiv && (
-              <Text
-                style={{ color: '#777', fontSize: 12, marginBottom: 5 }}
-              >
+              <Text style={{
+                color: '#777',
+                fontSize: 12,
+                marginBottom: 5
+              }}>
                 {partnerNev} éppen ír…
               </Text>
             )}
 
-            <View
-              style={{ flexDirection: 'row', alignItems: 'flex-end' }}
-            >
+            <View style={{
+              flexDirection: 'row',
+              alignItems: 'flex-end'
+            }}>
               <Pressable
-  onPress={kepKivalasztasa}
-  disabled={kuldesFolyamatban}
-  accessibilityRole="button"
-  accessibilityLabel="Kép kiválasztása"
-  style={({ pressed }) => [
-    styles.kepGomb,
-    (pressed || kuldesFolyamatban) && { opacity: 0.5 }
-  ]}
->
-  <Ionicons name="image-outline" size={25} color="#008D99" />
-</Pressable>
+                onPress={() => setKepMenuNyitva(true)}
+                disabled={kuldesFolyamatban}
+                accessibilityRole="button"
+                accessibilityLabel="Kép kiválasztása"
+                style={({ pressed }) => [
+                  styles.kepGomb,
+                  (pressed || kuldesFolyamatban) && { opacity: 0.5 }
+                ]}
+              >
+                <Ionicons name="image-outline" size={25} color="#008D99" />
+              </Pressable>
 
               <View style={{ flex: 1 }}>
                 <TextInputWrapper onPaste={billentyuKepFogadasa}>
@@ -1018,18 +1074,18 @@ const uzenetVisszavonasa = async item => {
                 </TextInputWrapper>
               </View>
 
-             <Pressable
-  onPress={() => uzenetKuldese()}
-  disabled={kuldesFolyamatban}
-  accessibilityRole="button"
-  accessibilityLabel="Üzenet küldése"
-  style={({ pressed }) => [
-    styles.kuldesGomb,
-    (pressed || kuldesFolyamatban) && { opacity: 0.5 }
-  ]}
->
-  <Ionicons name="send" size={21} color="#fff" />
-</Pressable>
+              <Pressable
+                onPress={() => uzenetKuldese()}
+                disabled={kuldesFolyamatban}
+                accessibilityRole="button"
+                accessibilityLabel="Üzenet küldése"
+                style={({ pressed }) => [
+                  styles.kuldesGomb,
+                  (pressed || kuldesFolyamatban) && { opacity: 0.5 }
+                ]}
+              >
+                <Ionicons name="send" size={21} color="#fff" />
+              </Pressable>
             </View>
           </View>
         </View>
@@ -1049,37 +1105,38 @@ const uzenetVisszavonasa = async item => {
             <Text numberOfLines={3} style={{ marginVertical: 12 }}>
               {idezetSzoveg(valaszMenu)}
             </Text>
+
             {valaszMenu &&
-  Number(valaszMenu.kuldo_id) !== Number(felhasznaloId) && (
-    <View style={styles.reakcioValaszto}>
-      {['❤️', '😂', '😮', '😢', '👍'].map(emoji => {
-        const aktualis = uzenetek.find(
-          item => Number(item.id) === Number(valaszMenu.id)
-        );
+              Number(valaszMenu.kuldo_id) !== Number(felhasznaloId) && (
+                <View style={styles.reakcioValaszto}>
+                  {['❤️', '😂', '😮', '😢', '👍'].map(emoji => {
+                    const aktualis = uzenetek.find(
+                      item => Number(item.id) === Number(valaszMenu.id)
+                    );
+                    const kivalasztott =
+                      aktualis?.reakcio?.emoji === emoji &&
+                      Number(aktualis?.reakcio?.felhasznaloId) ===
+                      Number(felhasznaloId);
 
-        const kivalasztott =
-          aktualis?.reakcio?.emoji === emoji &&
-          Number(aktualis?.reakcio?.felhasznaloId) ===
-            Number(felhasznaloId);
+                    return (
+                      <Pressable
+                        key={emoji}
+                        disabled={reakcioFolyamatban}
+                        onPress={() => reakcioKuldes(valaszMenu, emoji)}
+                        accessibilityRole="button"
+                        accessibilityLabel={`${emoji} reakció`}
+                        style={[
+                          styles.reakcioGomb,
+                          kivalasztott && styles.reakcioKivalasztott
+                        ]}
+                      >
+                        <Text style={{ fontSize: 25 }}>{emoji}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              )}
 
-        return (
-          <Pressable
-            key={emoji}
-            disabled={reakcioFolyamatban}
-            onPress={() => reakcioKuldes(valaszMenu, emoji)}
-            accessibilityRole="button"
-            accessibilityLabel={`${emoji} reakció`}
-            style={[
-              styles.reakcioGomb,
-              kivalasztott && styles.reakcioKivalasztott
-            ]}
-          >
-            <Text style={{ fontSize: 25 }}>{emoji}</Text>
-          </Pressable>
-        );
-      })}
-    </View>
-  )}
             <Button
               title="Válasz"
               disabled={kuldesFolyamatban}
@@ -1087,20 +1144,22 @@ const uzenetVisszavonasa = async item => {
                 if (valaszMenu) valaszKivalasztasa(valaszMenu);
               }}
             />
+
             {valaszMenu &&
-  Number(valaszMenu.kuldo_id) === Number(felhasznaloId) && (
-    <Pressable
-      disabled={visszavonasFolyamatban || kuldesFolyamatban}
-      onPress={() => uzenetVisszavonasa(valaszMenu)}
-      style={{ paddingVertical: 14, alignItems: 'center' }}
-    >
-      <Text style={{ color: '#b00020' }}>
-        {visszavonasFolyamatban
-          ? 'Visszavonás...'
-          : 'Üzenet visszavonása'}
-      </Text>
-    </Pressable>
-  )}
+              Number(valaszMenu.kuldo_id) === Number(felhasznaloId) && (
+                <Pressable
+                  disabled={visszavonasFolyamatban || kuldesFolyamatban}
+                  onPress={() => uzenetVisszavonasa(valaszMenu)}
+                  style={{ paddingVertical: 14, alignItems: 'center' }}
+                >
+                  <Text style={{ color: '#b00020' }}>
+                    {visszavonasFolyamatban
+                      ? 'Visszavonás...'
+                      : 'Üzenet visszavonása'}
+                  </Text>
+                </Pressable>
+              )}
+
             <Pressable
               onPress={() => setValaszMenu(null)}
               style={{ padding: 14, alignItems: 'center' }}
@@ -1138,15 +1197,14 @@ const uzenetVisszavonasa = async item => {
             contentContainerStyle={{ padding: 20 }}
             keyboardShouldPersistTaps="handled"
           >
-            <Text
-              style={{
-                fontSize: 20,
-                fontWeight: 'bold',
-                marginBottom: 12
-              }}
-            >
+            <Text style={{
+              fontSize: 20,
+              fontWeight: 'bold',
+              marginBottom: 12
+            }}>
               Partner jelentése
             </Text>
+
             {['Zaklatás', 'Sértő tartalom', 'Spam', 'Egyéb'].map(ok => (
               <Pressable
                 key={ok}
@@ -1157,6 +1215,7 @@ const uzenetVisszavonasa = async item => {
                 <Text>{jelentesOk === ok ? '● ' : '○ '}{ok}</Text>
               </Pressable>
             ))}
+
             <TextInput
               placeholder="Rövid leírás (nem kötelező)"
               value={jelentesLeiras}
@@ -1174,10 +1233,9 @@ const uzenetVisszavonasa = async item => {
                 textAlignVertical: 'top'
               }}
             />
+
             <Button
-              title={
-                muveletFolyamatban ? 'Küldés...' : 'Jelentés elküldése'
-              }
+              title={muveletFolyamatban ? 'Küldés...' : 'Jelentés elküldése'}
               disabled={muveletFolyamatban}
               onPress={() => biztonsagiMuvelet('/jelentes', {
                 partnerId,
@@ -1220,6 +1278,74 @@ const uzenetVisszavonasa = async item => {
             />
           )}
         </Pressable>
+      </Modal>
+
+      <Modal
+        visible={kepMenuNyitva}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setKepMenuNyitva(false)}
+      >
+        <View style={styles.valaszMenuHatter}>
+          <View style={styles.valaszMenuKartya}>
+            <Text style={styles.partnerNev}>Kép küldése</Text>
+
+            <Pressable
+              disabled={kuldesFolyamatban}
+              onPress={() => {
+                setKepMenuNyitva(false);
+                void kepKivalasztasa();
+              }}
+              accessibilityRole="button"
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                paddingVertical: 18,
+                marginTop: 10
+              }}
+            >
+              <Ionicons name="images-outline" size={25} color="#008D99" />
+              <Text style={{
+                marginLeft: 12,
+                fontSize: 16,
+                color: '#17212B'
+              }}>
+                Kép kiválasztása
+              </Text>
+            </Pressable>
+
+            <Pressable
+              disabled={kuldesFolyamatban}
+              onPress={() => {
+                setKepMenuNyitva(false);
+                void fotoKeszitese();
+              }}
+              accessibilityRole="button"
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                paddingVertical: 18
+              }}
+            >
+              <Ionicons name="camera-outline" size={25} color="#008D99" />
+              <Text style={{
+                marginLeft: 12,
+                fontSize: 16,
+                color: '#17212B'
+              }}>
+                Fotó készítése
+              </Text>
+            </Pressable>
+
+            <Pressable
+              onPress={() => setKepMenuNyitva(false)}
+              accessibilityRole="button"
+              style={{ alignItems: 'center', paddingVertical: 14 }}
+            >
+              <Text style={{ color: '#77828D', fontSize: 15 }}>Mégse</Text>
+            </Pressable>
+          </View>
+        </View>
       </Modal>
     </SafeAreaView>
   );
@@ -1314,8 +1440,9 @@ const styles = StyleSheet.create({
   kuldesContainer: {
     flexDirection: 'row',
     alignItems: 'flex-end',
+    flexShrink: 0,
     paddingTop: 12,
-    paddingBottom: 10,
+    paddingBottom: 18,
     backgroundColor: '#F5F7F8',
     borderTopWidth: 1,
     borderTopColor: '#E4EAED'

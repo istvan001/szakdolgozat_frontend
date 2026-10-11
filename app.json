@@ -20,6 +20,7 @@
       "supportsTablet": true
     },
     "android": {
+      "googleServicesFile": "./google-services.json",
       "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "foregroundImage": "./assets/Rlogo.png",
@@ -34,6 +35,12 @@
       "@react-native-community/datetimepicker",
       "expo-font",
       "expo-notifications"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "24de5baf-4d11-454b-8221-ddb4350e2459"
+      }
+    },
+    "owner": "julianus"
   }
 }

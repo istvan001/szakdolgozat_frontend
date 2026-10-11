@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "639505923697",
+    "project_id": "randotalk-a1fc9",
+    "storage_bucket": "randotalk-a1fc9.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:639505923697:android:8077980260aaa78edce5d0",
+        "android_client_info": {
+          "package_name": "com.anonymous.snack954058d9421f48f8b0cdf0c03afeb67a"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDfNdrw5aXctkcfD_7XHBLHohQpG9xhmjE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
