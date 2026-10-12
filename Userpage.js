@@ -53,6 +53,7 @@ export default function User({ route, navigation }) {
   const [korMin, setKorMin] = useState('18');
   const [korMax, setKorMax] = useState('80');
   const [tavolsagKm, setTavolsagKm] = useState('50');
+  const [keresettNem, setKeresettNem] = useState('Bárki');
   const utolsoLatott = useRef(null);
   const betoltesFolyamatban = useRef(null);
   const [sajatKepNagy, setSajatKepNagy] = useState(false);
@@ -167,6 +168,7 @@ export default function User({ route, navigation }) {
       setKorMin(String(adat.korMin ?? 18));
       setKorMax(String(adat.korMax ?? 80));
       setTavolsagKm(String(adat.tavolsagKm ?? 50));
+      setKeresettNem(adat.keresettNem ?? 'Bárki');
     } catch (error) {
       Alert.alert('Hiba', error.message || 'Nem sikerült betölteni a keresési beállításokat.');
     } finally { setPartnerBeallitasBetoltes(false); }
@@ -188,7 +190,7 @@ export default function User({ route, navigation }) {
       const response = await fetch(IP.ipcim + '/partner-beallitasok', {
         method: 'POST',
         headers: { ...authHeaders, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ korMin: min, korMax: max, tavolsagKm: tavolsag })
+        body: JSON.stringify({ korMin: min, korMax: max, tavolsagKm: tavolsag, keresettNem })
       });
       if (!response.ok) throw new Error(await response.text());
       setPartnerBeallitasNyitva(false);
@@ -291,50 +293,52 @@ export default function User({ route, navigation }) {
   // --------------------------------------------------
   // VÉLETLENSZERŰ PARTNER KERESÉSE
   // --------------------------------------------------
-  const partnerKereses = async () => {
-    try {
-      setKereses(true);
-      const response = await fetch(
-        IP.ipcim + '/random/' + felhasznaloId,
-        { headers: authHeaders }
-      );
-      if (!response.ok) {
-        const hiba = await response.text();
-        Alert.alert(
-          'Hiba',
-          hiba
-        );
-        return;
-      }
-      const data = await response.json();
-      console.log(
-        'Talált partner:',
-        data
-      );
-      // ------------------------------------------------
-      // RÖGTÖN MEGNYITJUK A CHATET
-      // ------------------------------------------------
-      navigation.navigate('Chat', {
-        // Új beszélgetésnél még nincs talalkozas ID
-        talalkozasId: null,
-        partnerId: data.partnerId,
-        partnerNev: data.partnerNev,
-        felhasznaloId: felhasznaloId,
-        token
-      });
-    } catch (error) {
-      console.error(
-        'Partner keresési hiba:',
-        error
-      );
-      Alert.alert(
-        'Hiba',
-        'Nem sikerült partnert keresni.'
-      );
-    } finally {
-      setKereses(false);
+    
+    const partnerKereses = async () => {
+  if (kereses) return;
+
+  setKereses(true);
+
+  try {
+    const url = IP.ipcim + '/random/' + felhasznaloId;
+
+    console.log('[Keresés] URL:', url);
+
+    const response = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    const szoveg = await response.text();
+
+    console.log('[Keresés] HTTP:', response.status);
+    console.log('[Keresés] Válasz:', szoveg);
+
+    if (!response.ok) {
+      Alert.alert('Hiba', szoveg || 'Nem sikerült partnert keresni.');
+      return;
     }
-  };
+
+    const data = JSON.parse(szoveg);
+
+    if (!Number.isInteger(Number(data.partnerId)) || Number(data.partnerId) <= 0) {
+      Alert.alert('Hiba', 'A szerver válaszából hiányzik a partner azonosítója.');
+      return;
+    }
+
+    navigation.navigate('Chat', {
+      talalkozasId: null,
+      partnerId: Number(data.partnerId),
+      partnerNev: data.partnerNev,
+      felhasznaloId,
+      token
+    });
+  } catch (error) {
+    console.error('[Keresés] Hiba:', error);
+    Alert.alert('Hiba', error.message || 'Nem sikerült partnert keresni.');
+  } finally {
+    setKereses(false);
+  }
+};
   // --------------------------------------------------
   // KORÁBBI BESZÉLGETÉS MEGNYITÁSA
   // --------------------------------------------------
@@ -742,6 +746,43 @@ export default function User({ route, navigation }) {
                     </View>
                   ) : (
                     <>
+                      <View style={styles.keresesSzekcio}>
+                        <View style={styles.keresesSzekcioFejlec}>
+                          <Ionicons name="people-outline" size={21} color="#008D99" />
+                          <Text style={styles.keresesSzekcioCim}>Keresett nem</Text>
+                        </View>
+
+                        <Text style={styles.beallitasSeged}>
+                          Válaszd ki, kivel szeretnél beszélgetni.
+                        </Text>
+
+                        <View style={styles.nemValasztoSor}>
+                          {['Bárki', 'Nő', 'Férfi', 'Egyéb'].map(ertek => (
+                            <Pressable
+                              key={ertek}
+                              onPress={() => setKeresettNem(ertek)}
+                              disabled={partnerBeallitasMentes}
+                              accessibilityRole="button"
+                              accessibilityState={{
+                                selected: keresettNem === ertek,
+                                disabled: partnerBeallitasMentes
+                              }}
+                              style={({ pressed }) => [
+                                styles.nemValasztoGomb,
+                                keresettNem === ertek && styles.nemValasztoAktiv,
+                                (pressed || partnerBeallitasMentes) && { opacity: 0.65 }
+                              ]}
+                            >
+                              <Text style={[
+                                styles.nemValasztoSzoveg,
+                                keresettNem === ertek && styles.nemValasztoAktivSzoveg
+                              ]}>
+                                {ertek}
+                              </Text>
+                            </Pressable>
+                          ))}
+                        </View>
+                      </View>
                       <View style={styles.keresesSzekcio}>
                         <View style={styles.keresesSzekcioFejlec}>
                           <Ionicons
@@ -1445,5 +1486,31 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 19,
     color: '#52606D'
+  },
+  nemValasztoSor: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 14
+  },
+  nemValasztoGomb: {
+    paddingHorizontal: 16,
+    paddingVertical: 11,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#E4EAED',
+    backgroundColor: '#F8FAFB'
+  },
+  nemValasztoAktiv: {
+    backgroundColor: '#008D99',
+    borderColor: '#008D99'
+  },
+  nemValasztoSzoveg: {
+    color: '#52606D',
+    fontSize: 14,
+    fontWeight: '600'
+  },
+  nemValasztoAktivSzoveg: {
+    color: '#fff'
   },
 });

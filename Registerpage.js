@@ -25,7 +25,7 @@ const telepulesek = require('./telepulesek.json');
 const varmegyeLista = [...new Set(telepulesek.map(hely => hely.varmegye))]
   .sort((a, b) => a.localeCompare(b, 'hu'));
 
-const nemek = ['Nő', 'Férfi', 'Egyéb', 'Nem szeretném megadni'];
+const nemek = ['Nő', 'Férfi', 'Egyéb'];
 const eletkorok = Array.from({ length: 63 }, (_, index) => index + 18);
 
 const keresheto = ertek => ertek
@@ -87,7 +87,7 @@ export default function Registerpage() {
   const [valasztottVarmegye, setValasztottVarmegye] = useState('');
   const [telepulesKereses, setTelepulesKereses] = useState('');
   const fejlecMagassag = useHeaderHeight();
-  
+
 
   const szurtTelepulesek = useMemo(() => {
     const keresett = keresheto(telepulesKereses.trim());
@@ -197,20 +197,36 @@ export default function Registerpage() {
   };
 
   const handleRegister = async () => {
+    if (mentes || sikeres) return;
+
     if (!password || password !== passwordMegerosites) {
       jelzes('Jelszóhiba', 'A két jelszó nem egyezik meg.');
       setLepes(1);
       return;
     }
 
-    const kor = eletkor.trim() ? Number(eletkor) : null;
+    if (!nemek.includes(nem)) {
+      jelzes('Hiányzó adat', 'Válaszd ki a nemedet.');
+      return;
+    }
 
-    if (kor !== null && (!Number.isInteger(kor) || kor < 18 || kor > 80)) {
+    if (!lakhely.trim()) {
+      jelzes('Hiányzó adat', 'Válaszd ki a településedet.');
+      return;
+    }
+
+    if (!eletkor.trim()) {
+      jelzes('Hiányzó adat', 'Válaszd ki az életkorodat.');
+      return;
+    }
+
+    const kor = Number(eletkor);
+
+    if (!Number.isInteger(kor) || kor < 18 || kor > 80) {
       jelzes('Hibás életkor', '18 és 80 közötti életkort válassz.');
       return;
     }
 
-    if (mentes || sikeres) return;
     setMentes(true);
 
     try {
@@ -223,8 +239,8 @@ export default function Registerpage() {
           Jelszo: password,
           regisztracioId,
           igazolasToken,
-          nem: nem === 'Nem szeretném megadni' ? null : (nem || null),
-          lakhely: lakhely.trim() || null,
+          nem,
+          lakhely: lakhely.trim(),
           eletkor: kor,
           profilkepBase64: profilkep?.base64 || null
         })
@@ -298,7 +314,7 @@ export default function Registerpage() {
               ? '1 / 3 · Belépési adatok'
               : lepes === 2
                 ? '2 / 3 · Hitelesítő kód'
-                : '3 / 3 · A profiladatok megadása választható'}
+                : '3 / 3 · A nem, a település és az életkor megadása kötelező'}
           </Text>
 
           {lepes === 1 ? (
@@ -468,7 +484,7 @@ export default function Registerpage() {
                 />
               )}
 
-              <Text style={styles.cimke}>Nem (választható)</Text>
+              <Text style={styles.cimke}>Nem (kötelező)</Text>
 
               <View style={styles.nemek}>
                 {nemek.map(ertek => (
@@ -502,7 +518,7 @@ export default function Registerpage() {
                 <Text
                   style={lakhely ? styles.valasztottSzoveg : styles.helyorzo}
                 >
-                  {lakhely || 'Település kiválasztása (választható)'}
+                  {lakhely || 'Település kiválasztása (kötelező)'}
                 </Text>
                 <Ionicons name="chevron-down" size={20} color="#77828D" />
               </Pressable>
@@ -517,7 +533,7 @@ export default function Registerpage() {
                 >
                   {eletkor
                     ? `${eletkor} éves`
-                    : 'Életkor kiválasztása (18–80, választható)'}
+                    : 'Életkor kiválasztása (18–80, kötelező)'}
                 </Text>
                 <Ionicons name="chevron-down" size={20} color="#77828D" />
               </Pressable>
@@ -569,24 +585,6 @@ export default function Registerpage() {
                   autoFocus
                 />
               )}
-
-              <Pressable
-                style={styles.listaElem}
-                onPress={() => {
-                  if (nyitottLista !== 'eletkor') {
-                    setLakhely('');
-                    setValasztottVarmegye('');
-                    setTelepulesKereses('');
-                  } else {
-                    setEletkor('');
-                  }
-                  setNyitottLista(null);
-                }}
-              >
-                <Text style={styles.listaSzoveg}>
-                  Nem szeretném megadni
-                </Text>
-              </Pressable>
 
               {nyitottLista === 'varmegye' ? (
                 <FlatList

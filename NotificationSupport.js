@@ -9,8 +9,10 @@ const Notifications = Platform.OS === 'web' ? null : require('expo-notifications
 if (Notifications) Notifications.setNotificationHandler({
   handleNotification: async (notification) => {
     const ugyanaz = aktivChat && Number(notification.request.content.data?.talalkozasId) === Number(aktivChat);
-    return { shouldShowBanner: !ugyanaz, shouldShowList: !ugyanaz,
-      shouldPlaySound: !ugyanaz, shouldSetBadge: false };
+    return {
+      shouldShowBanner: !ugyanaz, shouldShowList: !ugyanaz,
+      shouldPlaySound: !ugyanaz, shouldSetBadge: false
+    };
   }
 });
 export function aktivChatBeallitasa(id) { aktivChat = id; }
@@ -18,27 +20,29 @@ export function vanPushErtesites() { return pushAktiv; }
 export async function helyiErtesites(item) {
   if (!Notifications || pushAktiv || AppState.currentState !== 'active') return;
   await Notifications.scheduleNotificationAsync({
-    content: { title: 'Randotalk', body: 'Új üzeneted érkezett.', sound: 'default',
-      data: { talalkozasId: item.talalkozasId, partnerId: item.partnerId } },
+    content: {
+      title: 'Randotalk', body: 'Új üzeneted érkezett.', sound: 'default',
+      data: { talalkozasId: item.talalkozasId, partnerId: item.partnerId }
+    },
     trigger: null
   });
 }
 export async function ertesitesekInditasa(token, navigation, felhasznaloId) {
   console.log('[Értesítés] Beállítás elindult:', felhasznaloId);
-console.log('[Értesítés] Környezet:', Constants.executionEnvironment);
-console.log(
-  '[Értesítés] ProjectId:',
-  Constants.expoConfig?.extra?.eas?.projectId ||
-  Constants.easConfig?.projectId ||
-  'HIÁNYZIK'
-);
-  if (!Notifications) return { stop: () => {}, allapot: 'A weben az olvasatlan jelzés működik.' };
+  console.log('[Értesítés] Környezet:', Constants.executionEnvironment);
+  console.log(
+    '[Értesítés] ProjectId:',
+    Constants.expoConfig?.extra?.eas?.projectId ||
+    Constants.easConfig?.projectId ||
+    'HIÁNYZIK'
+  );
+  if (!Notifications) return { stop: () => { }, allapot: 'A weben az olvasatlan jelzés működik.' };
   if (Platform.OS === 'android') await Notifications.setNotificationChannelAsync('uzenetek', {
     name: 'Üzenetek', importance: Notifications.AndroidImportance.HIGH, sound: 'default'
   });
   let engedely = await Notifications.getPermissionsAsync();
   if (engedely.status !== 'granted') engedely = await Notifications.requestPermissionsAsync();
-  if (engedely.status !== 'granted') return { stop: () => {}, allapot: 'Az értesítések engedélye nincs megadva.' };
+  if (engedely.status !== 'granted') return { stop: () => { }, allapot: 'Az értesítések engedélye nincs megadva.' };
   const megnyitas = async (response) => {
     const data = response.notification.request.content.data;
     if (!data?.talalkozasId || !data?.partnerId) return;
@@ -46,8 +50,10 @@ console.log(
       const profilResponse = await fetch(IP.ipcim + '/profil/' + data.partnerId, { headers: { Authorization: `Bearer ${token}` } });
       if (!profilResponse.ok) return;
       const profil = await profilResponse.json();
-      navigation.navigate('Chat', { talalkozasId: Number(data.talalkozasId), partnerId: Number(data.partnerId),
-        partnerNev: profil.Felhasznalo, felhasznaloId, token });
+      navigation.navigate('Chat', {
+        talalkozasId: Number(data.talalkozasId), partnerId: Number(data.partnerId),
+        partnerNev: profil.Felhasznalo, felhasznaloId, token
+      });
     } catch (error) { console.error('Értesítés megnyitási hiba:', error); }
   };
   const listener = Notifications.addNotificationResponseReceivedListener(megnyitas);
@@ -71,10 +77,10 @@ console.log(
   } catch (error) {
     console.error('Push beállítási hiba:', error);
     return {
-  stop,
-  allapot: 'Push beállítási hiba: ' +
-    (error?.message || String(error))
-};
+      stop,
+      allapot: 'Push beállítási hiba: ' +
+        (error?.message || String(error))
+    };
   }
 }
 export async function ertesitesekKijelentkezes(token) {
@@ -83,6 +89,12 @@ export async function ertesitesekKijelentkezes(token) {
     method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
     body: JSON.stringify({ pushToken })
   });
-  if (!response.ok) throw new Error('Az értesítési token törlése nem sikerült');
+  if (!response.ok) {
+    const hiba = await response.text();
+
+    throw new Error(
+      `Értesítési token törlése: ${response.status} – ${hiba}`
+    );
+  }
   pushToken = null; pushAktiv = false;
 }
