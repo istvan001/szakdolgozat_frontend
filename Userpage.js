@@ -293,52 +293,52 @@ export default function User({ route, navigation }) {
   // --------------------------------------------------
   // VÉLETLENSZERŰ PARTNER KERESÉSE
   // --------------------------------------------------
-    
-    const partnerKereses = async () => {
-  if (kereses) return;
 
-  setKereses(true);
+  const partnerKereses = async () => {
+    if (kereses) return;
 
-  try {
-    const url = IP.ipcim + '/random/' + felhasznaloId;
+    setKereses(true);
 
-    console.log('[Keresés] URL:', url);
+    try {
+      const url = IP.ipcim + '/random/' + felhasznaloId;
 
-    const response = await fetch(url, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
+      console.log('[Keresés] URL:', url);
 
-    const szoveg = await response.text();
+      const response = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
 
-    console.log('[Keresés] HTTP:', response.status);
-    console.log('[Keresés] Válasz:', szoveg);
+      const szoveg = await response.text();
 
-    if (!response.ok) {
-      Alert.alert('Hiba', szoveg || 'Nem sikerült partnert keresni.');
-      return;
+      console.log('[Keresés] HTTP:', response.status);
+      console.log('[Keresés] Válasz:', szoveg);
+
+      if (!response.ok) {
+        Alert.alert('Hiba', szoveg || 'Nem sikerült partnert keresni.');
+        return;
+      }
+
+      const data = JSON.parse(szoveg);
+
+      if (!Number.isInteger(Number(data.partnerId)) || Number(data.partnerId) <= 0) {
+        Alert.alert('Hiba', 'A szerver válaszából hiányzik a partner azonosítója.');
+        return;
+      }
+
+      navigation.navigate('Chat', {
+        talalkozasId: null,
+        partnerId: Number(data.partnerId),
+        partnerNev: data.partnerNev,
+        felhasznaloId,
+        token
+      });
+    } catch (error) {
+      console.error('[Keresés] Hiba:', error);
+      Alert.alert('Hiba', error.message || 'Nem sikerült partnert keresni.');
+    } finally {
+      setKereses(false);
     }
-
-    const data = JSON.parse(szoveg);
-
-    if (!Number.isInteger(Number(data.partnerId)) || Number(data.partnerId) <= 0) {
-      Alert.alert('Hiba', 'A szerver válaszából hiányzik a partner azonosítója.');
-      return;
-    }
-
-    navigation.navigate('Chat', {
-      talalkozasId: null,
-      partnerId: Number(data.partnerId),
-      partnerNev: data.partnerNev,
-      felhasznaloId,
-      token
-    });
-  } catch (error) {
-    console.error('[Keresés] Hiba:', error);
-    Alert.alert('Hiba', error.message || 'Nem sikerült partnert keresni.');
-  } finally {
-    setKereses(false);
-  }
-};
+  };
   // --------------------------------------------------
   // KORÁBBI BESZÉLGETÉS MEGNYITÁSA
   // --------------------------------------------------

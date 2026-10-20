@@ -59,116 +59,116 @@ export default function Loginpage() {
 
   return (
     <KeyboardAvoidingView
-  style={{ flex: 1, backgroundColor: '#F5F7F8' }}
-  behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-  keyboardVerticalOffset={fejlecMagassag}
->
-  <ScrollView
-    style={styles.oldal}
-    contentContainerStyle={styles.container}
-    keyboardShouldPersistTaps="handled"
-    keyboardDismissMode="on-drag"
-  >
-      <View style={styles.tartalom}>
-        <View style={styles.fejlec}>
-          
-          <Text style={styles.cim}>Randotalk</Text>
-          <Text style={styles.alcim}>Lépj be, és folytasd a beszélgetést!</Text>
-        </View>
+      style={{ flex: 1, backgroundColor: '#F5F7F8' }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={fejlecMagassag}
+    >
+      <ScrollView
+        style={styles.oldal}
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+      >
+        <View style={styles.tartalom}>
+          <View style={styles.fejlec}>
 
-        <View style={styles.kartya}>
-          <Text style={styles.kartyaCim}>Bejelentkezés</Text>
-
-          <Text style={styles.mezoCim}>Felhasználónév</Text>
-          <View style={styles.mezo}>
-            <Ionicons name="person-outline" size={21} color="#77828D" />
-            <TextInput
-              placeholder="Felhasználónév"
-              placeholderTextColor="#929CA5"
-              value={username}
-              onChangeText={setUsername}
-              autoCapitalize="none"
-              autoCorrect={false}
-              accessibilityLabel="Felhasználónév"
-              style={styles.input}
-            />
+            <Text style={styles.cim}>Randotalk</Text>
+            <Text style={styles.alcim}>Lépj be, és folytasd a beszélgetést!</Text>
           </View>
 
-          <Text style={styles.mezoCim}>Jelszó</Text>
-          <View style={styles.mezo}>
-            <Ionicons
-              name="lock-closed-outline"
-              size={21}
-              color="#77828D"
-            />
-            <TextInput
-              placeholder="Jelszó"
-              placeholderTextColor="#929CA5"
-              secureTextEntry={!jelszoLathato}
-              value={password}
-              onChangeText={setPassword}
-              autoCapitalize="none"
-              autoCorrect={false}
-              accessibilityLabel="Jelszó"
-              style={styles.input}
-            />
-            <Pressable
-              onPress={() => setJelszoLathato(elozo => !elozo)}
-              accessibilityRole="button"
-              accessibilityLabel={
-                jelszoLathato
-                  ? 'Jelszó elrejtése'
-                  : 'Jelszó megjelenítése'
-              }
-              style={styles.szemGomb}
-            >
+          <View style={styles.kartya}>
+            <Text style={styles.kartyaCim}>Bejelentkezés</Text>
+
+            <Text style={styles.mezoCim}>Felhasználónév</Text>
+            <View style={styles.mezo}>
+              <Ionicons name="person-outline" size={21} color="#77828D" />
+              <TextInput
+                placeholder="Felhasználónév"
+                placeholderTextColor="#929CA5"
+                value={username}
+                onChangeText={setUsername}
+                autoCapitalize="none"
+                autoCorrect={false}
+                accessibilityLabel="Felhasználónév"
+                style={styles.input}
+              />
+            </View>
+
+            <Text style={styles.mezoCim}>Jelszó</Text>
+            <View style={styles.mezo}>
               <Ionicons
-                name={jelszoLathato ? 'eye-off-outline' : 'eye-outline'}
-                size={23}
+                name="lock-closed-outline"
+                size={21}
                 color="#77828D"
               />
+              <TextInput
+                placeholder="Jelszó"
+                placeholderTextColor="#929CA5"
+                secureTextEntry={!jelszoLathato}
+                value={password}
+                onChangeText={setPassword}
+                autoCapitalize="none"
+                autoCorrect={false}
+                accessibilityLabel="Jelszó"
+                style={styles.input}
+              />
+              <Pressable
+                onPress={() => setJelszoLathato(elozo => !elozo)}
+                accessibilityRole="button"
+                accessibilityLabel={
+                  jelszoLathato
+                    ? 'Jelszó elrejtése'
+                    : 'Jelszó megjelenítése'
+                }
+                style={styles.szemGomb}
+              >
+                <Ionicons
+                  name={jelszoLathato ? 'eye-off-outline' : 'eye-outline'}
+                  size={23}
+                  color="#77828D"
+                />
+              </Pressable>
+            </View>
+
+            <Pressable
+              onPress={() => navigation.navigate('EmailAction', { mode: 'reset' })}
+              accessibilityRole="button"
+              style={styles.elfelejtettGomb}
+            >
+              <Text style={styles.elfelejtettSzoveg}>
+                Elfelejtetted a jelszavad?
+              </Text>
+            </Pressable>
+
+            <Pressable
+              onPress={Login}
+              accessibilityRole="button"
+              style={({ pressed }) => [
+                styles.belepesGomb,
+                pressed && styles.megnyomva
+              ]}
+            >
+              <Text style={styles.belepesSzoveg}>Bejelentkezés</Text>
+              <Ionicons name="arrow-forward" size={21} color="#fff" />
             </Pressable>
           </View>
 
+          <Text style={styles.regisztracioCim}>Még nincs fiókod?</Text>
           <Pressable
-            onPress={() => navigation.navigate('EmailAction', { mode: 'reset' })}
-            accessibilityRole="button"
-            style={styles.elfelejtettGomb}
-          >
-            <Text style={styles.elfelejtettSzoveg}>
-              Elfelejtetted a jelszavad?
-            </Text>
-          </Pressable>
-
-          <Pressable
-            onPress={Login}
+            onPress={() => navigation.navigate('Register')}
             accessibilityRole="button"
             style={({ pressed }) => [
-              styles.belepesGomb,
+              styles.regisztracioGomb,
               pressed && styles.megnyomva
             ]}
           >
-            <Text style={styles.belepesSzoveg}>Bejelentkezés</Text>
-            <Ionicons name="arrow-forward" size={21} color="#fff" />
+            <Text style={styles.regisztracioSzoveg}>Regisztráció</Text>
           </Pressable>
         </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
 
-        <Text style={styles.regisztracioCim}>Még nincs fiókod?</Text>
-        <Pressable
-          onPress={() => navigation.navigate('Register')}
-          accessibilityRole="button"
-          style={({ pressed }) => [
-            styles.regisztracioGomb,
-            pressed && styles.megnyomva
-          ]}
-        >
-          <Text style={styles.regisztracioSzoveg}>Regisztráció</Text>
-        </Pressable>
-      </View>
-    </ScrollView>
-  </KeyboardAvoidingView>
-
-);
+  );
 }
 const styles = StyleSheet.create({
   oldal: {

@@ -3,7 +3,7 @@ import { View, Text, Modal, Pressable, ScrollView, ActivityIndicator, StyleSheet
 import { Ionicons } from '@expo/vector-icons';
 import ProtectedImage from './ProtectedImage';
 const IP = require('./ipcim');
-export default function PartnerAdatlap({ partnerId, token, kepUrl, fejlec = false,online=false, children }) {
+export default function PartnerAdatlap({ partnerId, token, kepUrl, fejlec = false, online = false, children }) {
   const [nyitva, setNyitva] = useState(false);
   const [nagyKep, setNagyKep] = useState(false);
   const [profil, setProfil] = useState(null);
@@ -17,7 +17,7 @@ export default function PartnerAdatlap({ partnerId, token, kepUrl, fejlec = fals
     let aktiv = true;
     fetch(IP.ipcim + '/profil/' + partnerId, { headers: { Authorization: `Bearer ${token}` } })
       .then(async response => { if (response.ok) { const adat = await response.json(); if (aktiv) setProfil(adat); } })
-      .catch(() => {});
+      .catch(() => { });
     return () => { aktiv = false; keresszam.current++; };
   }, [partnerId, token, fejlec]);
   const megnyitas = async event => {
@@ -38,29 +38,29 @@ export default function PartnerAdatlap({ partnerId, token, kepUrl, fejlec = fals
   return <>
     <Pressable onPress={megnyitas} accessibilityRole="button" accessibilityLabel="Partner adatlapjának megnyitása" style={fejlec ? styles.fejlec : undefined}>
       <View pointerEvents="none" style={styles.avatarKeret}>
-  {kep ? (
-    <ProtectedImage
-      uri={IP.ipcim + kep}
-      token={token}
-      style={styles.avatar}
-    />
-  ) : (
-    <Ionicons name="person-circle" size={52} color="#aaa" />
-  )}
+        {kep ? (
+          <ProtectedImage
+            uri={IP.ipcim + kep}
+            token={token}
+            style={styles.avatar}
+          />
+        ) : (
+          <Ionicons name="person-circle" size={52} color="#aaa" />
+        )}
 
-  {online && <View style={styles.onlinePont} />}
-</View>
+        {online && <View style={styles.onlinePont} />}
+      </View>
 
-{(children || fejlec) && (
-  <View style={{ marginLeft: 10, flexShrink: 1 }}>
-    {children}
-    {fejlec && (
-      <Text style={[styles.onlineFelirat, !online && { color: '#777' }]}>
-        {online ? 'Online' : 'Offline'}
-      </Text>
-    )}
-  </View>
-)}
+      {(children || fejlec) && (
+        <View style={{ marginLeft: 10, flexShrink: 1 }}>
+          {children}
+          {fejlec && (
+            <Text style={[styles.onlineFelirat, !online && { color: '#777' }]}>
+              {online ? 'Online' : 'Offline'}
+            </Text>
+          )}
+        </View>
+      )}
     </Pressable>
     <Modal visible={nyitva} transparent animationType="fade" onRequestClose={() => nagyKep ? setNagyKep(false) : bezaras()}>
       {nagyKep && kep ? <View style={styles.nagyHatter}>
@@ -101,24 +101,24 @@ const styles = StyleSheet.create({
   nagyHatter: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#111' },
   bezaras: { position: 'absolute', top: 45, right: 20, padding: 10, zIndex: 1 },
   avatarKeret: {
-  width: 52,
-  height: 52,
-  position: 'relative'
-},
-onlinePont: {
-  position: 'absolute',
-  right: 0,
-  bottom: 0,
-  width: 15,
-  height: 15,
-  borderRadius: 8,
-  backgroundColor: '#31c65b',
-  borderWidth: 2,
-  borderColor: '#fff'
-},
-onlineFelirat: {
-  color: '#278a40',
-  fontSize: 12,
-  marginTop: 2
-},
+    width: 52,
+    height: 52,
+    position: 'relative'
+  },
+  onlinePont: {
+    position: 'absolute',
+    right: 0,
+    bottom: 0,
+    width: 15,
+    height: 15,
+    borderRadius: 8,
+    backgroundColor: '#31c65b',
+    borderWidth: 2,
+    borderColor: '#fff'
+  },
+  onlineFelirat: {
+    color: '#278a40',
+    fontSize: 12,
+    marginTop: 2
+  },
 });

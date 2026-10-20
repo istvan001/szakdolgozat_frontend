@@ -48,10 +48,10 @@ export default function ProtectedImage({
   const source = Platform.OS === 'web'
     ? webUri ? { uri: webUri } : null
     : uri && token ? {
-        uri,
-        headers: { Authorization: `Bearer ${token}` },
-        isAnimated: /\.gif(?:\?|$)/i.test(uri)
-      } : null;
+      uri,
+      headers: { Authorization: `Bearer ${token}` },
+      isAnimated: /\.gif(?:\?|$)/i.test(uri)
+    } : null;
 
   return (
     <View
